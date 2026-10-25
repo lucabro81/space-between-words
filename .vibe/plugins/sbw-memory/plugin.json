@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "mercury-memory",
+  "name": "sbw-memory",
   "version": "1.0.0",
-  "description": "Luca's personal project memory for the Mercury framework (Vibe knowledge). Not versioned.",
+  "description": "Luca's personal project memory for the sbw (space-between-worlds) framework (Vibe knowledge). Not versioned.",
   "extensions": {
     "ai.mistral.vibe": {
       "schemaVersion": 1

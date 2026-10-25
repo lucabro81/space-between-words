@@ -1,10 +1,10 @@
 ---
-name: mercury-review
-description: Load before merging a PR on Mercury. Runs the two review-gate subagents (cold-reviewer and docs-auditor) with only the issue number, branch name and review scope, collects their verdicts, fixes findings in-branch, and re-runs until both APPROVE.
+name: sbw-review
+description: Load before merging a PR on sbw. Runs the two review-gate subagents (cold-reviewer and docs-auditor) with only the issue number, branch name and review scope, collects their verdicts, fixes findings in-branch, and re-runs until both APPROVE.
 user-invocable: true
 ---
 
-# Mercury Review — Phase 5: Review Gate
+# sbw Review — Phase 5: Review Gate
 
 Before merging a PR, two subagents review the branch in parallel, each with
 only the issue number, the branch name and the review scope — no conversation
@@ -13,8 +13,8 @@ context. Their verdicts are binding: no merge until both return APPROVE.
 ## Prerequisites
 
 - You are on branch `feat/<N>-<slug>`
-- All tests pass, typecheck clean
-- The changeset is created and committed (created in `mercury-tdd`)
+- All tests pass, `cargo clippy` clean, `cargo fmt --check` clean
+- The kernel purity script passes
 - The branch is pushed to origin: `git push -u origin <branch>`
 - The PR exists (or create it now with `gh pr create --fill --body "Closes #N"`)
 
@@ -23,23 +23,19 @@ context. Their verdicts are binding: no merge until both return APPROVE.
 ### cold-reviewer
 Judges the code against the issue. Looks for bugs, dead code, inadequate
 tests, missing edge cases. Verdict: APPROVE or CHANGES REQUESTED.
-Its definition is in `.vibe/agents/cold-reviewer.toml` — the canonical
-definition is `.claude/agents/cold-reviewer.md` (used by Claude Code):
-keep them in sync when the definition changes.
+Its definition is in `.vibe/agents/cold-reviewer.toml`.
 
 ### docs-auditor
 Verifies bidirectionally that documentation matches the code. Looks for
 missing docs, stale docs, contradictions, untracked deferrals. Verdict:
 APPROVE or CHANGES REQUESTED.
-Its definition is in `.vibe/agents/docs-auditor.toml` — the canonical
-definition is `.claude/agents/docs-auditor.md`: keep them in sync.
+Its definition is in `.vibe/agents/docs-auditor.toml`.
 
 ## Review scope
 
 Each reviewer's verdict is scoped: the full branch on its first round on
 the branch, the delta since its last round afterwards. The scope is part
-of the spawn message, computed by `.vibe/tools/review_scope.py` (covered
-by `.vibe/tools/test_review_scope.py`):
+of the spawn message, computed by `.vibe/tools/review_scope.py`:
 
 ```
 Issue: #N
@@ -63,9 +59,8 @@ Verdict rules by scope:
   of scope and defer them — never re-litigate them.
 - A new file in the delta gets a full review of the file.
 - docs-auditor's scope is the delta files plus the documentation
-  surfaces that describe them (README, AGENTS.md, the CLI's `--help`,
-  the docs site, the changesets): its "the code is documented" direction
-  reads documentation that did not change.
+  surfaces that describe them (README, AGENTS.md, rustdoc): its "the code
+  is documented" direction reads documentation that did not change.
 
 The scope line carries only the file list and the sha — never the
 reviewer's previous findings. Fresh eyes stay fresh. The test suite is
@@ -179,7 +174,7 @@ in the final report.
 
 | Class | Meaning | Effect |
 |---|---|---|
-| S1 | Fail-open on a common, innocent command of the workflow: a commit on main, an `rm -rf`, a commit that should carry a changeset slips through | Blocks the merge |
+| S1 | Fail-open on a common, innocent command of the workflow: a commit on main, an `rm -rf`, a commit that violates a spec invariant or the kernel purity rules slips through | Blocks the merge |
 | S2 | Over-block: a legitimate workflow command is refused (a commit on a feature branch blocked, the reviewers' read-only contract broken) | Blocks the merge |
 | S3 | Inaccuracy in the safe direction: over-warning, false positives, imprecise state that causes no harm | Fix in the same round with a regression test, or defer with a tracked issue |
 | S4 | Cosmetic or marginal robustness — no user-visible harm | Defer with a tracked tech-debt issue; never blocks |
@@ -213,11 +208,11 @@ The review always ends. The loop is bounded by:
 
 Re-run a reviewer only when files in its domain changed since its last
 verdict: cold-reviewer for code and tests, docs-auditor for docs, skills,
-agent definitions and changesets. A reviewer that APPROVEd is not re-run
+agent definitions and rustdoc. A reviewer that APPROVEd is not re-run
 for changes outside its domain. The re-run is scoped to the delta since
 its last verdict (see Review scope); a reviewer whose delta is empty is
 not re-run.
 
 ## After the review
 
-Load the `mercury-release` skill for the post-merge release on main.
+Load the `sbw-release` skill for the post-merge release on main.

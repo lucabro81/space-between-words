@@ -1,10 +1,10 @@
 ---
-name: mercury-tdd
-description: Load when working on a Mercury branch (feat/<N>-<slug>) after the issue has been created. Enforces TDD — write the failing test first, then implement, then refactor. Atomic commits, one changeset per issue.
+name: sbw-tdd
+description: Load when working on an sbw branch (feat/<N>-<slug>) after the issue has been created. Enforces TDD — write the failing test first, then implement, then refactor. Atomic commits, one PR per issue.
 user-invocable: true
 ---
 
-# Mercury TDD — Phase 4: Development on the Branch
+# sbw TDD — Phase 4: Development on the Branch
 
 This skill guides development work on branch `feat/<N>-<slug>`, applying
 TDD (Test-Driven Development) and atomic commits.
@@ -21,16 +21,17 @@ For each unit of work in the plan:
 
 ### 1. RED — Write the failing test
 
-- Identify the impacted package (e.g. `packages/libs/core`, `apps/cli`)
+- Identify the impacted crate (e.g. `crates/sbw-kernel`, `crates/sbw-eventlog`)
 - Write the test in the corresponding test file (co-located with the code:
-  `src/foo.ts` → `src/foo.test.ts`)
+  `src/foo.rs` → `src/foo.rs` `#[cfg(test)]` module, or `tests/` for integration tests)
 - The test must:
   - Describe the expected behavior specifically
   - Cover edge cases and limit cases, not just the happy path
-  - Use `bun:test` (`import { describe, it, expect } from 'bun:test'`)
+  - Use the standard Rust test harness (`#[test]`)
+  - Be named after the acceptance criterion it covers: `k6_…`, `l14_…`
 - Run the test and **verify it fails** for the right reason:
   ```bash
-  cd <package-dir> && bun test <test-file>
+  cargo test -p <crate-name> <test_name>
   ```
 - Commit the test:
   ```bash
@@ -43,9 +44,9 @@ For each unit of work in the plan:
 - Write the minimum code needed to make the test pass
 - Do not optimize, do not add unrequested features
 - Run the test: it must pass
-- Run all tests in the package to verify nothing broke:
+- Run all tests in the crate to verify nothing broke:
   ```bash
-  cd <package-dir> && bun test
+  cargo test -p <crate-name>
   ```
 - Commit the implementation:
   ```bash
@@ -57,7 +58,7 @@ For each unit of work in the plan:
 
 - Refactor while keeping tests green
 - Remove duplication, improve names, simplify
-- Run tests and typecheck after each change
+- Run tests and clippy after each change
 - Commit the refactor (if significant):
   ```bash
   git commit -m "refactor(<scope>): <description>"
@@ -69,57 +70,34 @@ For each unit of work in the plan:
   implementation in the same commit (unless it's a minimal refactor).
 - **Message**: follows Conventional Commits: `type(scope): description`
   - `type`: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`
-  - `scope`: the package or area (e.g. `core`, `cli`, `plugin-jira`)
+  - `scope`: the crate or area (e.g. `kernel`, `eventlog`)
 - **Never commit on main**: always verify the current branch
   (`git branch --show-current`) before committing.
+- **No Co-Authored-By lines** in commits.
 
 ## Before every push
 
-```bash
-# Typecheck the modified package
-cd <package-dir> && bun run typecheck
-
-# All tests in the package
-cd <package-dir> && bun test
-
-# If the change touches multiple packages, typecheck at repo level
-bun run typecheck
-```
-
-## Create the changeset
-
-Before moving to the review gate, create the changeset so the reviewers can
-audit it (its text becomes the public changelog):
+Run the full quality gate from the repo root:
 
 ```bash
-bun run changeset
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+./scripts/check-kernel-purity.sh
 ```
 
-Answer the changesets prompts:
-- **Impacted packages**: select the packages the diff touches. For a framework
-  change (core, cli, contracts, etc.), select all in the `fixed` group. For a
-  plugin/channel/auth, select only that one.
-- **Bump type**: `patch` for bugfix, `minor` for feature, `major` for breaking
-  change (never without a dedicated issue).
-- **Description**: public text, in English, no internal references (no `D-XX`,
-  `S-XX`, no milestone). Describe what changes for the user.
-
-Verify and commit the changeset:
-```bash
-cat .changeset/<file-name>.md
-git add .changeset/
-git commit -m "chore: add changeset for #N"
-```
+All four must pass before pushing.
 
 ## When you are done
 
 - All tests pass
-- Typecheck clean
+- `cargo clippy` is clean with `-D warnings`
+- `cargo fmt --check` passes
+- The kernel purity script passes
 - Every commit is atomic with a meaningful message
-- The changeset is created and committed
 - The branch is ready for the review gate
 
-Load the `mercury-review` skill to proceed.
+Load the `sbw-review` skill to proceed.
 
 ## For bugfixes
 

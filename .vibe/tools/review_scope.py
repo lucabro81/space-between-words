@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print the review-scope line for the mercury-review skill.
+"""Print the review-scope line for the sbw-review skill.
 
 The review gate scopes each reviewer's verdict: full branch on a
 reviewer's first round, the delta since that reviewer's last round
@@ -24,7 +24,7 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Print the review-scope line for the mercury-review skill.",
+        description="Print the review-scope line for the sbw-review skill.",
     )
     parser.add_argument("--repo", default=".", help="the repository (default: cwd)")
     parser.add_argument("--since", help="the HEAD the reviewer last returned a verdict on")
