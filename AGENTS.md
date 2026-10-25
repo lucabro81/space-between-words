@@ -23,8 +23,8 @@ sbw is a framework to build and run MUDs (text worlds) and federations of worlds
 
 | Block | Crate | Spec (source of truth for behaviour) |
 |---|---|---|
-| 1 — Kernel (Nucleo) | `sbw-kernel` | `docs/spec-nucleo.md` |
-| 2 — Event log (Registro eventi) | `sbw-eventlog` | `docs/spec-registro.md` |
+| 1 — Kernel (Nucleo) | `sbw-kernel` | `docs/specs/spec-01-nucleo.md` |
+| 2 — Event log (Registro eventi) | `sbw-eventlog` | `docs/specs/spec-02-registro.md` |
 
 Vocabulary: `docs/glossario.md`. Specs and glossary are in Italian; read them as they are. Code, comments, commit messages, issues and PRs are in English.
 
@@ -63,8 +63,8 @@ The specs are written in design sessions outside this repo. **Never edit anythin
 
 Each spec has numbered acceptance criteria in section 10. IDs:
 
-- `K1`…`K22` = `docs/spec-nucleo.md` §10, criteria 1–22
-- `L1`…`L27` = `docs/spec-registro.md` §10, criteria 1–27
+- `K1`…`K22` = `docs/specs/spec-01-nucleo.md` §10, criteria 1–22
+- `L1`…`L27` = `docs/specs/spec-02-registro.md` §10, criteria 1–27
 
 Every criterion an issue covers gets at least one test whose name starts with its ID in lowercase (`k6_…`, `l14_…`), one criterion per test, asserting **the observable outcome written in the criterion**, not a proxy. Test first, see it fail for the right reason, then the code.
 
@@ -102,8 +102,9 @@ sbw/
 ├── rust-toolchain.toml
 ├── docs/                   # specs and glossary — read-only for agents
 │   ├── glossario.md
-│   ├── spec-nucleo.md
-│   └── spec-registro.md
+│   └── specs/
+│       ├── spec-01-nucleo.md
+│       └── spec-02-registro.md
 ├── wit/
 │   └── rules.wit           # rule interface contract (spec-nucleo 5.10)
 ├── scripts/
