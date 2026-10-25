@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mercury-memory",
+  "version": "1.0.0",
+  "description": "Luca's personal project memory for the Mercury framework (Vibe knowledge). Not versioned.",
+  "extensions": {
+    "ai.mistral.vibe": {
+      "schemaVersion": 1
+    }
+  }
+}
