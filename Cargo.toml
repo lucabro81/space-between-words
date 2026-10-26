@@ -1,0 +1,3 @@
+[workspace]
+resolver = "2"
+members = ["crates/sbw-kernel", "crates/sbw-eventlog"]

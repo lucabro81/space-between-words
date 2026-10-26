@@ -1,0 +1,66 @@
+// sbw rule interface — spec-nucleo 5.10
+//
+// The four functions the kernel calls into author-declared rules.
+// Types are placeholders; they are refined as the kernel types (State,
+// Command, Event, Effect, Meaning, etc.) are implemented in sbw-kernel.
+
+package sbw:rules@1.0.0;
+
+interface types {
+    // Opaque handles — the kernel owns the real data, rules only read it.
+    resource state-view {
+        // Read-only view of the world state.
+    }
+    resource command {
+        // A structured request: who, what, on what, plus runtime data
+        // (wall time, dice material).
+    }
+    resource event {
+        // A fact that happened: meaning + effects + metadata.
+    }
+    resource meaning {
+        // Open-vocabulary label ("preso", "fallito", "filo aperto").
+    }
+    resource effect {
+        // Closed-vocabulary state change with before/after values.
+    }
+    resource refusal {
+        // Structured rejection reason (code + parameters).
+    }
+    resource dice-outcomes {
+        // Recorded dice results from the command's material.
+    }
+
+    record rule-input {
+        state: state-view,
+        command: command,
+    }
+
+    record execution-output {
+        meaning: meaning,
+        effects: list<effect>,
+    }
+
+    variant check-result {
+        ok,
+        refused(refusal),
+    }
+}
+
+interface rule-engine {
+    use types.{state-view, command, event, meaning, effect, refusal, dice-outcomes, rule-input, execution-output, check-result};
+
+    /// `disponibili` — which commands are available to `who` in this state.
+    available: func(state: state-view, who: string) -> list<command>;
+
+    /// `verifica` — is this command meaningful in this state?
+    check: func(input: rule-input) -> check-result;
+
+    /// `esecuzione` — produce meaning and effects for an accepted command.
+    execute: func(input: rule-input, dice: dice-outcomes) -> execution-output;
+
+    /// `reazioni` — additional events triggered by the command or by
+    /// events just produced (before / instead / after, plus thread
+    /// generators). Evaluated in the response cycle (spec-nucleo 5.13).
+    react: func(state: state-view, trigger: event) -> list<event>;
+}
