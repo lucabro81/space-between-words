@@ -24,7 +24,7 @@ Before proceeding, verify that:
 gh issue create \
   --title "<plan title>" \
   --body "<approved plan body>" \
-  --repo lucabro81/space-between-worlds
+  --repo lucabro81/space-between-words
 ```
 
 The issue body must contain the full plan, formatted in Markdown.
@@ -33,7 +33,7 @@ Add a line at the top: `> Plan approved by @lucabro81 in plan mode.`
 ### 2. Create the branch from the issue
 
 ```bash
-gh issue develop <N> --base main --name feat/<N>-<slug> --repo lucabro81/space-between-worlds
+gh issue develop <N> --base main --name feat/<N>-<slug> --repo lucabro81/space-between-words
 ```
 
 Where `<N>` is the number of the issue just created and `<slug>` is a
