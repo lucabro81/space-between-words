@@ -49,6 +49,25 @@ The specs are written in design sessions outside this repo. **Never edit anythin
 7. **Exposure.** Every event the kernel produces has `exposed = false`, and the rule interface offers no way to set it. Who decides exposure is an open question (6b).
 8. **IDs are opaque.** Player, incarnation, world, element, thread and vigil IDs are newtypes; their structure is not designed yet (session 3). Implement compare, order and serialize, nothing else.
 
+## Rust — NEVER
+
+- NEVER: `unwrap()` or `expect()` outside `#[cfg(test)]`
+- NEVER: `panic!`, `todo!`, `unreachable!`, `unimplemented!` outside `#[cfg(test)]` — errors are structured types (`thiserror`), not panics
+- NEVER: `println!`, `eprintln!`, `dbg!` in `sbw-kernel` — the kernel has no output channel (principle 1); diagnostics belong to the runtime
+- NEVER: `unsafe` in `sbw-kernel`
+- NEVER: introduce a dependency cycle between crates
+- NEVER: commit with clippy warnings — `cargo clippy -- -D warnings` must be clean
+- NEVER: commit without rustfmt formatting
+
+## Rust — ALWAYS
+
+- ALWAYS: use `thiserror` for error type definitions
+- ALWAYS: use `miette` for CLI-facing error output (when a CLI exists — blocks 1–2 have none, see What NOT to do)
+- ALWAYS: prefer `&str` over `String` in function signatures unless ownership is required
+- ALWAYS: all public types and functions must be coherent with the relevant block document (`docs/specs/`)
+
+The `thiserror` and `miette` clauses imply future dependencies: their first use still follows the dependency rule under "What NOT to do" (Luca's approval plus the quoted documentation proof), and an approved `sbw-kernel` dependency is also added to `APPROVED_DEPS` in `scripts/check-kernel-purity.sh`.
+
 ## What NOT to do
 
 - Don't build anything outside blocks 1 and 2: no runtime/daemon, SSH, network, LLM, federation, CLI, declarative rule format, reference ruleset, player identity, end-user binary. No `wasmtime`, no `wit-bindgen`. If a criterion seems to need one of these, ask.
