@@ -1,4 +1,95 @@
-//! Time and position types (spec-01 §3, §4).
+//! Time and position types (spec-01 §3, §4): plain data newtypes. Wall time
+//! enters the kernel only as data in the command (invariant 5); `Position` is
+//! assigned by the event log, not by the kernel; `WorldTime` is fiction time;
+//! `Seed` is dice material carried by the command and never stored in state
+//! (§5.9).
+
+macro_rules! scalar_newtype {
+    ($name:ident, $inner:ty, $doc:literal) => {
+        #[doc = $doc]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        pub struct $name($inner);
+
+        impl $name {
+            /// Wraps a raw value.
+            pub const fn new(value: $inner) -> Self {
+                Self(value)
+            }
+
+            /// Returns the wrapped value.
+            pub const fn get(self) -> $inner {
+                self.0
+            }
+
+            /// Serializes as 8 big-endian bytes.
+            pub fn to_bytes(self) -> [u8; 8] {
+                self.0.to_be_bytes()
+            }
+
+            /// Deserializes from 8 big-endian bytes; `None` on any other
+            /// length.
+            pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+                let raw: [u8; 8] = bytes.try_into().ok()?;
+                Some(Self(<$inner>::from_be_bytes(raw)))
+            }
+        }
+    };
+}
+
+scalar_newtype!(
+    WallTime,
+    i64,
+    "Wall-clock time (spec-01 §3): the real-world clock. Read only by the \
+     runtime and passed to the kernel as data in the command."
+);
+scalar_newtype!(
+    Position,
+    u64,
+    "Ordinal position in the event log (spec-01 §3): 1, 2, 3, … Assigned by \
+     the event log when an event is added, never chosen by the kernel."
+);
+scalar_newtype!(
+    WorldTime,
+    i64,
+    "Fiction time (spec-01 §3): the in-game time. A datum in the state like \
+     any other; game mechanics can move it, rewind included."
+);
+
+/// Dice material (spec-01 §5.9): random bytes supplied by the runtime in the
+/// command. Never stored in the state.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Seed(Vec<u8>);
+
+impl Seed {
+    /// Wraps raw dice material.
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Returns the dice material as a byte slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Serializes as an 8-byte big-endian length prefix followed by the bytes.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(8 + self.0.len());
+        out.extend_from_slice(&(self.0.len() as u64).to_be_bytes());
+        out.extend_from_slice(&self.0);
+        out
+    }
+
+    /// Deserializes from the length-prefixed form; `None` if the prefix does
+    /// not match the payload length.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        let (prefix, payload) = bytes.split_at_checked(8)?;
+        let len = u64::from_be_bytes(prefix.try_into().ok()?);
+        if payload.len() as u64 != len {
+            return None;
+        }
+        Some(Self(payload.to_vec()))
+    }
+}
 
 #[cfg(test)]
 mod tests {
