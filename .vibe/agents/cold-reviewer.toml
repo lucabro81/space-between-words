@@ -1,6 +1,4 @@
 # Vibe subagent profile for cold-reviewer.
-# Same definition as .claude/agents/cold-reviewer.md (used by Claude Code as the
-# subagent's system prompt): keep them in sync when the definition changes.
 # Spawned with the `task` tool passing `agent = "cold-reviewer"` and, as the task,
 # the issue number, the branch name and the review scope — nothing else.
 display_name = "Cold Reviewer"
