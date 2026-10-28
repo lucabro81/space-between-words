@@ -18,9 +18,9 @@ worlds. The repo currently holds two blocks:
   chain, lock, indexes, snapshots. Depends on `sbw-kernel`.
 
 The behavioural source of truth is the specs under `docs/` (in Italian,
-read-only — agents never edit them): `docs/spec-nucleo.md`,
-`docs/spec-registro.md`, `docs/glossario.md`. Code, comments, commit messages,
-issues and PRs are in English.
+read-only — agents never edit them): `docs/specs/spec-01-nucleo.md`,
+`docs/specs/spec-02-registro.md`, `docs/glossario.md`. Code, comments, commit
+messages, issues and PRs are in English.
 
 People read this repo's docs to understand how to use the crates, and a
 coding agent often follows them literally: **a doc that promises something
