@@ -1,6 +1,6 @@
 ---
 name: sbw-review
-description: Load before merging a PR on sbw. Runs the two review-gate subagents (cold-reviewer and docs-auditor) with only the issue number, branch name and review scope, collects their verdicts, fixes findings in-branch, and re-runs until both APPROVE.
+description: Load to run the review gate on a local sbw branch, before anything is pushed to origin. Runs the two review-gate subagents (cold-reviewer and docs-auditor) with only the issue number, branch name and review scope, collects their verdicts, fixes findings in-branch, and re-runs until both APPROVE.
 user-invocable: true
 ---
 
@@ -133,8 +133,9 @@ For each finding in the reports:
   hides a decision that belongs to Luca. In that case, bring the finding to
   Luca and wait for his decision.
 - **S3**: fix it in the same round, with a regression test.
-- **S4**: defer it: open a tech-debt issue, link it in the PR, and note the
-  deferral in the report.
+- **S4**: defer it: open a tech-debt issue, record it to be linked in the PR
+  when the PR is opened (after fixing, step 4), and note the deferral in the
+  report.
 - **docs-auditor finding (documentation)**: fix it directly. If the finding
   indicates the **code** is wrong (direction A: doc claim not backed by code),
   apply the same classification and rules as cold-reviewer findings.
@@ -143,8 +144,8 @@ For each finding in the reports:
 
 After fixing:
 1. Commit the fixes: `git add -A && git commit -m "fix(review): address review findings"`
-2. **Re-run only the reviewers whose domain changed** (see below) — go back
-   to step 2 for each
+2. **Re-run only the reviewers whose domain changed** (see below) — for
+   each new round of findings, go back to step 1
 3. Apply the exit conditions below: the loop always ends
 4. Only when every re-run reviewer APPROVEs: the branch is ready to push.
    Push it and open the PR (`gh pr create --fill --body "Closes #N"`) only
@@ -194,7 +195,7 @@ The review always ends. The loop is bounded by:
 
 - **Fix-or-defer.** A round with no S1/S2 closes when every S3/S4 finding
   is either fixed with a regression test or deferred in a tracked issue
-  linked in the PR.
+  (linked in the PR when it is opened).
 - **Verification round.** After a round that had only S3/S4, re-run each
   reviewer whose domain changed (see below) once, scoped to the delta
   since its last round. If it finds only S3/S4 again, apply fix-or-defer
