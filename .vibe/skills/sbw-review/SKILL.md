@@ -6,17 +6,19 @@ user-invocable: true
 
 # sbw Review — Phase 5: Review Gate
 
-Before merging a PR, two subagents review the branch in parallel, each with
-only the issue number, the branch name and the review scope — no conversation
-context. Their verdicts are binding: no merge until both return APPROVE.
+Before anything is pushed to origin, two subagents review the branch locally
+in parallel, each with only the issue number, the branch name and the review
+scope — no conversation context. Their verdicts are binding: no push, no PR
+and no merge until both return APPROVE.
 
 ## Prerequisites
 
-- You are on branch `feat/<N>-<slug>`
+- You are on branch `feat/<N>-<slug>`, still local: nothing has been pushed
+  to origin yet
 - All tests pass, `cargo clippy` clean, `cargo fmt --check` clean
 - The kernel purity script passes
-- The branch is pushed to origin: `git push -u origin <branch>`
-- The PR exists (or create it now with `gh pr create --fill --body "Closes #N"`)
+- The PR does not exist yet: per the workflow in AGENTS.md, the review gate
+  runs locally, before any push
 
 ## The two subagents
 
@@ -141,17 +143,20 @@ For each finding in the reports:
 
 After fixing:
 1. Commit the fixes: `git add -A && git commit -m "fix(review): address review findings"`
-2. Push: `git push`
-3. **Re-run only the reviewers whose domain changed** (see below) — go back
+2. **Re-run only the reviewers whose domain changed** (see below) — go back
    to step 2 for each
-4. Apply the exit conditions below: the loop always ends
+3. Apply the exit conditions below: the loop always ends
+4. Only when every re-run reviewer APPROVEs: the branch is ready to push.
+   Push it and open the PR (`gh pr create --fill --body "Closes #N"`) only
+   after Luca has ok'd the operations on origin
 
 ### 6. Final report
 
 When both return APPROVE, tell the user:
 - The two subagents' verdicts
 - The list of findings fixed (if any)
-- That the PR is ready for merge (but the merge waits for Luca)
+- That the branch is ready to be pushed and the PR opened (both wait for
+  Luca's ok on the operations on origin); the merge waits for Luca
 
 ## Rules
 
