@@ -7,8 +7,9 @@
 //! dependencies cannot pull in anything that touches I/O or OS randomness.
 //!
 //! This file lives under `tests/` (not `src/`), so `std::process` is allowed
-//! here: `scripts/check-kernel-purity.sh` guards `src/` only, and test-only
-//! code may use the standard library freely (AGENTS.md principle 6).
+//! here: `scripts/check-kernel-purity.sh` — the enforcement AGENTS.md
+//! designates for kernel purity — scans `crates/sbw-kernel/src/` only, and
+//! integration-test targets are never part of the shipped crate.
 
 use std::path::PathBuf;
 use std::process::Command;

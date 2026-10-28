@@ -47,7 +47,7 @@ The specs are written in design sessions outside this repo. **Never edit anythin
 5. **The log is append-only.** The `EventLog` API exposes no operation that modifies or deletes an event (spec-registro 5.2).
 6. **Test rules are test-only.** The rules used by tests (lantern, trap, thread generator, lock-picking, rewind…) are Rust fixtures under `tests/` or `#[cfg(test)]`, never reachable from non-test code. The real rule format is block 8, not in this repo.
 7. **Exposure.** Every event the kernel produces has `exposed = false`, and the rule interface offers no way to set it. Who decides exposure is an open question (6b).
-8. **IDs are opaque.** Player, incarnation, world, element, thread and vigil IDs are newtypes; their structure is not designed yet (session 3). Implement compare, order and serialize, nothing else.
+8. **IDs are opaque.** Player, incarnation, world, element, thread and vigil IDs are newtypes; their structure is not designed yet (block 13). Implement compare, order and serialize, nothing else.
 
 ## Rust — NEVER
 
