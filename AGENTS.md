@@ -11,9 +11,10 @@ Every unit of work starts as a plan approved in plan mode, becomes a GitHub issu
 1. **Plan first.** Draft the plan and propose it in plan mode. Nothing else starts, the issue included, until Luca has approved it there: an agreement reached in chat is not an approved plan.
 2. **Issue with the approved plan.** Open a GitHub issue before writing code; the approved plan lives inside it. The issue lists the acceptance criteria it covers by ID (see Acceptance criteria).
 3. **Branch from the issue**: `gh issue develop <n> --base main --name feat/<n>-<slug>`. Never commit to `main` directly.
-4. **TDD on the branch**, atomic commits, open a PR with `Closes #N`.
-5. **Review gate.** Before merge, run the review subagents (`cold-reviewer`, `docs-auditor`) given only the issue number, the branch name and the review scope. Their findings and exit conditions are defined in their own files, not here.
-6. **Merge on approval**: squash-merge, sync `main`, delete the branch.
+4. **TDD on the branch**, atomic commits. Do not push yet.
+5. **Review gate, locally, before anything on origin.** Run the review subagents (`cold-reviewer`, `docs-auditor`) given only the issue number, the branch name and the review scope; both must APPROVE while the branch is still local. Their findings and exit conditions are defined in their own files, not here.
+6. **Push and PR on approval.** Only after both reviewers APPROVE and Luca has ok'd the operations on origin: push the branch and open a PR with `Closes #N`.
+7. **Merge on approval**: squash-merge, sync `main`, delete the branch.
 
 Anything decided along the way that is not in the issue's plan (a deferred criterion, a follow-up, a question for a design session) becomes a comment on the issue or a new issue. No tracking files in the repo.
 
@@ -47,7 +48,7 @@ The specs are written in design sessions outside this repo. **Never edit anythin
 5. **The log is append-only.** The `EventLog` API exposes no operation that modifies or deletes an event (spec-registro 5.2).
 6. **Test rules are test-only.** The rules used by tests (lantern, trap, thread generator, lock-picking, rewind…) are Rust fixtures under `tests/` or `#[cfg(test)]`, never reachable from non-test code. The real rule format is block 8, not in this repo.
 7. **Exposure.** Every event the kernel produces has `exposed = false`, and the rule interface offers no way to set it. Who decides exposure is an open question (6b).
-8. **IDs are opaque.** Player, incarnation, world, element, thread and vigil IDs are newtypes; their structure is not designed yet (session 3). Implement compare, order and serialize, nothing else.
+8. **IDs are opaque.** Player, incarnation, world, element, thread and vigil IDs are newtypes; their structure is not designed yet (block 13). Implement compare, order and serialize, nothing else.
 
 ## Rust — NEVER
 
