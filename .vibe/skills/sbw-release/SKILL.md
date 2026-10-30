@@ -18,7 +18,7 @@ gate, and merged into `main` with the PR.
 Publishing to crates.io and a GitHub Actions pipeline are **not** part of
 sbw's release process: this repo has no CI configuration, and Luca has
 decided not to publish the crates. Nothing leaves the repo in a release.
-Adding either is Luca's future decision, planned and tracked in its own
+Adding either is Luca's future decision and would go through its own
 issue; this skill must not be edited to reintroduce them without one.
 
 ## Prerequisites
