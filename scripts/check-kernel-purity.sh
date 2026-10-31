@@ -28,8 +28,17 @@ FORBIDDEN_PATTERNS=(
 )
 
 # Approved normal dependencies of sbw-kernel (updated only with an approved dep).
+# thiserror 2.0.21 was approved by Luca on 2026-10-28 (issue #2): a compile-time
+# derive macro with no runtime footprint. The remaining entries are the build
+# crates it pulls into the normal dependency tree.
 APPROVED_DEPS=(
     'sbw-kernel'
+    'thiserror'
+    'thiserror-impl'
+    'proc-macro2'
+    'quote'
+    'syn'
+    'unicode-ident'
 )
 
 fail=0

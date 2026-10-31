@@ -75,9 +75,11 @@ The `thiserror` and `miette` clauses imply future dependencies: their first use 
 Shipped documentation stands alone. The specs are design-time documents and may leave the repo one day: nothing that ships with the code may depend on them for its meaning.
 
 - Rustdoc and code comments (test files and `wit/` included) describe the code in its own terms. No references to spec files or spec sections (`spec-01`, `spec-nucleo 5.10`, `§3`, `docs/specs/…`).
+- File names follow the same rule: a file's name describes what it contains (`purity.rs`, `single_timeline.rs`), never a design document or its numbering scheme.
+- Test names follow it too: a test function's name describes what it asserts. The code is agnostic of the design documents — criterion IDs never appear in it.
 - Crate READMEs, the root `README.md` and this file follow the same rule: they describe their subject without pointing into the specs.
 - References to external standards (RFC 8949) are fine — they are permanent.
-- Criterion IDs (`K5`, `k4_…`) are fine — they are this repo's tracking convention, and the full text of each criterion is quoted in the issue that covers it.
+- Criterion IDs belong to the issues, the plans and the PRs that track the work — never to the code: not in file names, not in test names, not in comments. The full text of each criterion is quoted in the issue that covers it.
 - The docs-auditor review gate flags any spec reference in the documentation surface of a diff.
 
 ## What NOT to do
@@ -93,7 +95,7 @@ Shipped documentation stands alone. The specs are design-time documents and may 
 
 The framework's acceptance criteria have stable IDs: `K1`…`K22` (kernel) and `L1`…`L27` (event log). The full text of a criterion is quoted in the issue that covers it.
 
-Every criterion an issue covers gets at least one test whose name starts with its ID in lowercase (`k6_…`, `l14_…`), one criterion per test, asserting **the observable outcome written in the criterion**, not a proxy. Test first, see it fail for the right reason, then the code.
+Every criterion an issue covers gets at least one test asserting **the observable outcome written in the criterion**, not a proxy; one criterion per test. Test names describe what they assert — the code carries no criterion IDs (see Documentation). Test first, see it fail for the right reason, then the code.
 
 A criterion that can't be tested as written is decided in the issue's plan (how it's tested, or why it's partial or deferred), never improvised in the code. A deferred criterion gets its own issue.
 
