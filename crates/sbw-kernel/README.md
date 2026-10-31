@@ -10,5 +10,4 @@ The kernel is pure: no file system, network, clock, environment, processes,
 threads or OS randomness; no floats; no `HashMap`/`HashSet` (ordered
 structures only). Enforced by `scripts/check-kernel-purity.sh`.
 
-Spec: `docs/specs/spec-01-nucleo.md`. See the repo root `AGENTS.md` for the
-development workflow and quality gate.
+See the repo root `AGENTS.md` for the development workflow and quality gate.
