@@ -6,6 +6,17 @@ Pure, deterministic core: `decide` (state + command → events or refusal) and
 `apply` (state + event → new state), with state, effects, the rule trait,
 dice, threads and fiction time.
 
+Modules:
+
+- `id` — opaque ID newtypes (player, incarnation, world, element, thread,
+  vigil): compare, order and serialize, nothing else
+- `time` — wall time, log position, fiction time, dice material
+- `meaning` — the open-vocabulary label of an event
+- `effect` — the closed vocabulary of state changes, attribute values,
+  the fiction-time rate and anchor, deadlines
+- `event` — the fact that happened: meaning, effects, who, when
+- `state` — the world snapshot: skeleton plus attributes
+
 The kernel is pure: no file system, network, clock, environment, processes,
 threads or OS randomness; no floats; no `HashMap`/`HashSet` (ordered
 structures only). Enforced by `scripts/check-kernel-purity.sh`.
