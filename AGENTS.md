@@ -15,6 +15,7 @@ Every unit of work starts as a plan approved in plan mode, becomes a GitHub issu
 5. **Review gate, locally, before anything on origin.** Run the review subagents (`cold-reviewer`, `docs-auditor`) given only the issue number, the branch name and the review scope; both must APPROVE while the branch is still local. Their findings and exit conditions are defined in their own files, not here.
 6. **Push and PR on approval.** Only after both reviewers APPROVE and Luca has ok'd the operations on origin: push the branch and open a PR with `Closes #N`.
 7. **Merge on approval**: squash-merge, sync `main`, delete the branch.
+8. **Release on Luca's decision**: after a merge, the release runs on `main` via the `sbw-release` skill — version bump, tag, push, verified locally. One release per issue, supervised by Luca; nothing is published.
 
 Anything decided along the way that is not in the issue's plan (a deferred criterion, a follow-up, a question for a design session) becomes a comment on the issue or a new issue. No tracking files in the repo.
 
