@@ -142,8 +142,9 @@ mod tests {
         Event::new(
             Meaning::new("preso"),
             vec![],
-            vec![InvolvedEntity::Element(ElementId::from_bytes(&1u64.to_be_bytes())
-                .expect("8 bytes"))],
+            vec![InvolvedEntity::Element(
+                ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes"),
+            )],
             Some(VigilId::from_bytes(&7u64.to_be_bytes()).expect("8 bytes")),
             vec![],
             WallTime::new(1_000),
@@ -178,10 +179,11 @@ mod tests {
 
     #[test]
     fn involved_entity_covers_both_kinds() {
-        let inc = InvolvedEntity::Incarnation(IncarnationId::from_bytes(&1u64.to_be_bytes())
-            .expect("8 bytes"));
-        let el = InvolvedEntity::Element(ElementId::from_bytes(&2u64.to_be_bytes())
-            .expect("8 bytes"));
+        let inc = InvolvedEntity::Incarnation(
+            IncarnationId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes"),
+        );
+        let el =
+            InvolvedEntity::Element(ElementId::from_bytes(&2u64.to_be_bytes()).expect("8 bytes"));
         assert_ne!(inc, el);
     }
 }

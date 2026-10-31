@@ -171,9 +171,7 @@ pub enum Effect {
         attributes: Vec<(String, AttributeValue)>,
     },
     /// Remove an element from the world.
-    RemoveElement {
-        id: ElementId,
-    },
+    RemoveElement { id: ElementId },
     /// Move an element from one container to another (`None` = the world
     /// root).
     MoveElement {
@@ -190,36 +188,21 @@ pub enum Effect {
         new: AttributeValue,
     },
     /// Open a thread.
-    OpenThread {
-        id: ThreadId,
-    },
+    OpenThread { id: ThreadId },
     /// Close a thread.
-    CloseThread {
-        id: ThreadId,
-    },
+    CloseThread { id: ThreadId },
     /// Schedule a deadline.
-    ScheduleDeadline {
-        deadline: Deadline,
-    },
+    ScheduleDeadline { deadline: Deadline },
     /// Cancel a deadline.
-    CancelDeadline {
-        deadline: Deadline,
-    },
+    CancelDeadline { deadline: Deadline },
     /// Set the fiction-time anchor: the old anchor and the new one. Rewind
     /// is a move plus an anchor set with before/after swapped — no extra
     /// primitive.
-    SetTimeAnchor {
-        old: TimeAnchor,
-        new: TimeAnchor,
-    },
+    SetTimeAnchor { old: TimeAnchor, new: TimeAnchor },
     /// Open a vigil.
-    OpenVigil {
-        id: VigilId,
-    },
+    OpenVigil { id: VigilId },
     /// Close a vigil.
-    CloseVigil {
-        id: VigilId,
-    },
+    CloseVigil { id: VigilId },
 }
 
 #[cfg(test)]
@@ -273,7 +256,7 @@ mod tests {
     #[test]
     fn attribute_values_cover_the_four_kinds() {
         let element = ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes");
-        let values = vec![
+        let values = [
             AttributeValue::Integer(42),
             AttributeValue::Text("inchiodato".into()),
             AttributeValue::Boolean(true),

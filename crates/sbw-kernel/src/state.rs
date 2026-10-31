@@ -59,7 +59,11 @@ pub struct ElementSkeleton {
 impl ElementSkeleton {
     /// Creates an element. Takes ownership of the type: the skeleton is
     /// stored in the state.
-    pub fn new(id: ElementId, element_type: impl Into<String>, container: Option<ElementId>) -> Self {
+    pub fn new(
+        id: ElementId,
+        element_type: impl Into<String>,
+        container: Option<ElementId>,
+    ) -> Self {
         Self {
             id,
             element_type: element_type.into(),
@@ -222,10 +226,10 @@ impl State {
         if self.elements.contains_key(&element.id()) {
             return Err(StateError::DuplicateElement { id: element.id() });
         }
-        if let Some(container) = element.container() {
-            if !self.elements.contains_key(&container) {
-                return Err(StateError::UnknownContainer { id: container });
-            }
+        if let Some(container) = element.container()
+            && !self.elements.contains_key(&container)
+        {
+            return Err(StateError::UnknownContainer { id: container });
         }
         self.elements.insert(element.id(), element);
         Ok(())
@@ -233,10 +237,7 @@ impl State {
 
     /// Adds an incarnation. The ID must be new and the location must
     /// already be an element of the world.
-    pub fn add_incarnation(
-        &mut self,
-        incarnation: IncarnationSkeleton,
-    ) -> Result<(), StateError> {
+    pub fn add_incarnation(&mut self, incarnation: IncarnationSkeleton) -> Result<(), StateError> {
         if self.incarnations.contains_key(&incarnation.id()) {
             return Err(StateError::DuplicateIncarnation {
                 id: incarnation.id(),
@@ -350,13 +351,15 @@ mod tests {
             })
         );
         // once the container exists, the insertion succeeds
-        assert!(state
-            .add_element(ElementSkeleton::new(
-                ElementId::from_raw(3),
-                "shelf",
-                Some(ElementId::from_raw(1))
-            ))
-            .is_ok());
+        assert!(
+            state
+                .add_element(ElementSkeleton::new(
+                    ElementId::from_raw(3),
+                    "shelf",
+                    Some(ElementId::from_raw(1))
+                ))
+                .is_ok()
+        );
     }
 
     #[test]

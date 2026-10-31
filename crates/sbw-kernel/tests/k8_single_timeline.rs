@@ -78,8 +78,12 @@ fn k8_effect_vocabulary_has_no_timeline_primitives() {
         },
         Effect::OpenThread { id: thread_id(1) },
         Effect::CloseThread { id: thread_id(1) },
-        Effect::ScheduleDeadline { deadline: deadline() },
-        Effect::CancelDeadline { deadline: deadline() },
+        Effect::ScheduleDeadline {
+            deadline: deadline(),
+        },
+        Effect::CancelDeadline {
+            deadline: deadline(),
+        },
         Effect::SetTimeAnchor {
             old: anchor(),
             new: anchor(),
