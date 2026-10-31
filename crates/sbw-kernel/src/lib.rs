@@ -5,4 +5,5 @@
 //! no hash-based collections (ordered structures only).
 
 pub mod id;
+pub mod meaning;
 pub mod time;
