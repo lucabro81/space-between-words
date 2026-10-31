@@ -7,5 +7,6 @@ CBOR (RFC 8949 §4.2) event bodies, SHA-256 hash chain, single-writer file
 lock, derived indexes and snapshots in a separate SQLite file. Depends on
 `sbw-kernel`.
 
-Spec: `docs/specs/spec-02-registro.md`. See the repo root `AGENTS.md` for the
-development workflow and quality gate.
+The log is append-only: the API exposes no operation that modifies or deletes
+an event. See the repo root `AGENTS.md` for the development workflow and
+quality gate.
