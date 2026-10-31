@@ -1,6 +1,5 @@
-// sbw rule interface — spec-nucleo 5.10
-//
-// The four functions the kernel calls into author-declared rules.
+// sbw rule interface: the four functions the kernel calls into
+// author-declared rules.
 // Types are placeholders; they are refined as the kernel types (State,
 // Command, Event, Effect, Meaning, etc.) are implemented in sbw-kernel.
 
@@ -61,6 +60,6 @@ interface rule-engine {
 
     /// `reazioni` — additional events triggered by the command or by
     /// events just produced (before / instead / after, plus thread
-    /// generators). Evaluated in the response cycle (spec-nucleo 5.13).
+    /// generators), in the same response.
     react: func(state: state-view, trigger: event) -> list<event>;
 }

@@ -1,6 +1,5 @@
-//! K4 acceptance test (spec-01 §10, criterion 4): the kernel, in its
-//! compilation, depends on nothing that accesses network, filesystem, clock
-//! or system randomness.
+//! K4 acceptance test: the kernel, in its compilation, depends on nothing
+//! that accesses network, filesystem, clock or system randomness.
 //!
 //! Observable outcome: `cargo tree -p sbw-kernel -e normal` lists no
 //! dependency crate — only `sbw-kernel` itself. A crate with zero normal

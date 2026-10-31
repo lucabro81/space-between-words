@@ -1,8 +1,7 @@
-//! Time and position types (spec-01 §3, §4): plain data newtypes. Wall time
-//! enters the kernel only as data in the command (invariant 5); `Position` is
-//! assigned by the event log, not by the kernel; `WorldTime` is fiction time;
-//! `Seed` is dice material carried by the command and never stored in state
-//! (§5.9).
+//! Time and position types: plain data newtypes. Wall time enters the kernel
+//! only as data in the command; `Position` is assigned by the event log, not
+//! by the kernel; `WorldTime` is fiction time; `Seed` is dice material carried
+//! by the command and never stored in state.
 
 macro_rules! scalar_newtype {
     ($name:ident, $inner:ty, $doc:literal) => {
@@ -39,24 +38,24 @@ macro_rules! scalar_newtype {
 scalar_newtype!(
     WallTime,
     i64,
-    "Wall-clock time (spec-01 §3): the real-world clock. Read only by the \
-     runtime and passed to the kernel as data in the command."
+    "Wall-clock time: the real-world clock. Read only by the runtime and \
+     passed to the kernel as data in the command."
 );
 scalar_newtype!(
     Position,
     u64,
-    "Ordinal position in the event log (spec-01 §3): 1, 2, 3, … Assigned by \
-     the event log when an event is added, never chosen by the kernel."
+    "Ordinal position in the event log: 1, 2, 3, … Assigned by the event \
+     log when an event is added, never chosen by the kernel."
 );
 scalar_newtype!(
     WorldTime,
     i64,
-    "Fiction time (spec-01 §3): the in-game time. A datum in the state like \
-     any other; game mechanics can move it, rewind included."
+    "Fiction time: the in-game time. A datum in the state like any other; \
+     game mechanics can move it, rewind included."
 );
 
-/// Dice material (spec-01 §5.9): random bytes supplied by the runtime in the
-/// command. Never stored in the state.
+/// Dice material: random bytes supplied by the runtime in the command.
+/// Never stored in the state.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Seed(Vec<u8>);
 
