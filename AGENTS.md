@@ -78,7 +78,7 @@ Shipped documentation stands alone. The specs are design-time documents and may 
 - File names follow the same rule: a file's name describes what it contains (`purity.rs`, `single_timeline.rs`), never a design document or its numbering scheme. The criterion-ID prefix belongs to the test function, not to the file.
 - Crate READMEs, the root `README.md` and this file follow the same rule: they describe their subject without pointing into the specs.
 - References to external standards (RFC 8949) are fine — they are permanent.
-- Criterion IDs (`K5`, `k4_…`) are fine — they are this repo's tracking convention, and the full text of each criterion is quoted in the issue that covers it.
+- Criterion IDs (`K5`, `k8_…` test function names) are fine — they are this repo's tracking convention, and the full text of each criterion is quoted in the issue that covers it.
 - The docs-auditor review gate flags any spec reference in the documentation surface of a diff.
 
 ## What NOT to do
