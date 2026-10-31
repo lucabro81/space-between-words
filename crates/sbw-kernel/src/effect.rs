@@ -4,7 +4,8 @@
 //! vocabulary is fixed: a change to it is a new framework version, which is
 //! the price of replaying the log without the author's rules.
 
-use crate::id::{ElementId, IncarnationId, ThreadId, VigilId};
+use crate::id::{ElementId, ThreadId, VigilId};
+use crate::state::AttributeOwner;
 use crate::time::{WallTime, WorldTime};
 
 /// The value an attribute can hold: integers, text, booleans or a reference
@@ -15,13 +16,6 @@ pub enum AttributeValue {
     Text(String),
     Boolean(bool),
     Id(ElementId),
-}
-
-/// Who owns an attribute: an element or an incarnation.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AttributeOwner {
-    Element(ElementId),
-    Incarnation(IncarnationId),
 }
 
 /// Error returned when a `Rate` is built with a non-positive denominator.
