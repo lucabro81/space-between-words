@@ -39,19 +39,19 @@ scalar_newtype!(
     WallTime,
     i64,
     "Wall-clock time: the real-world clock. Read only by the runtime and \
-     runtime and passed to the kernel as data in the command."
+     passed to the kernel as data in the command."
 );
 scalar_newtype!(
     Position,
     u64,
     "Ordinal position in the event log: 1, 2, 3, … Assigned by the event \
-     the event log when an event is added, never chosen by the kernel."
+     log when an event is added, never chosen by the kernel."
 );
 scalar_newtype!(
     WorldTime,
     i64,
     "Fiction time: the in-game time. A datum in the state like any other; \
-     any other; game mechanics can move it, rewind included."
+     game mechanics can move it, rewind included."
 );
 
 /// Dice material: random bytes supplied by the runtime in the command.
