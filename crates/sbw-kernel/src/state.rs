@@ -252,12 +252,6 @@ impl State {
         Ok(())
     }
 
-    /// Stores an attribute, overwriting any previous value. The kernel
-    /// keeps and modifies attributes; it never interprets them.
-    pub fn set_attribute(&mut self, key: AttributeKey, value: AttributeValue) {
-        self.attributes.insert(key, value);
-    }
-
     /// Returns the value of one attribute, if it exists.
     pub fn attribute(&self, key: &AttributeKey) -> Option<&AttributeValue> {
         self.attributes.get(key)
@@ -390,15 +384,12 @@ mod tests {
     }
 
     #[test]
-    fn attributes_are_stored_without_interpretation() {
-        let mut state = State::new(anchor());
+    fn attributes_have_no_values_before_the_log_is_applied() {
+        // populating the attributes is `apply`'s job; here the map is only
+        // reachable for reading and starts empty
+        let state = State::new(anchor());
+        assert!(state.attributes().is_empty());
         let key = AttributeKey::new(AttributeOwner::Element(ElementId::from_raw(1)), "lit");
-        state.set_attribute(key.clone(), AttributeValue::Boolean(true));
-        assert_eq!(state.attribute(&key), Some(&AttributeValue::Boolean(true)));
-        // overwritten, no semantics attached
-        state.set_attribute(key.clone(), AttributeValue::Boolean(false));
-        assert_eq!(state.attribute(&key), Some(&AttributeValue::Boolean(false)));
-        let missing = AttributeKey::new(AttributeOwner::Element(ElementId::from_raw(9)), "no");
-        assert_eq!(state.attribute(&missing), None);
+        assert_eq!(state.attribute(&key), None);
     }
 }

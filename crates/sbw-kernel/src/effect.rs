@@ -255,16 +255,34 @@ mod tests {
 
     #[test]
     fn attribute_values_cover_the_four_kinds() {
-        let element = ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes");
-        let values = [
-            AttributeValue::Integer(42),
-            AttributeValue::Text("inchiodato".into()),
+        let a = ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes");
+        let b = ElementId::from_bytes(&2u64.to_be_bytes()).expect("8 bytes");
+        // each kind compares within itself: equal values are equal,
+        // different values are not
+        assert_eq!(AttributeValue::Integer(42), AttributeValue::Integer(42));
+        assert_ne!(AttributeValue::Integer(42), AttributeValue::Integer(43));
+        assert_eq!(
+            AttributeValue::Text("a".into()),
+            AttributeValue::Text("a".into())
+        );
+        assert_ne!(
+            AttributeValue::Text("a".into()),
+            AttributeValue::Text("b".into())
+        );
+        assert_eq!(AttributeValue::Boolean(true), AttributeValue::Boolean(true));
+        assert_ne!(
             AttributeValue::Boolean(true),
-            AttributeValue::Id(element),
-        ];
-        // distinct, comparable, cloneable
-        assert_ne!(values[0], values[1]);
-        assert!(values[2].clone() == values[2]);
-        assert_eq!(values.len(), 4);
+            AttributeValue::Boolean(false)
+        );
+        assert_eq!(AttributeValue::Id(a), AttributeValue::Id(a));
+        assert_ne!(AttributeValue::Id(a), AttributeValue::Id(b));
+        // the four kinds are distinct from each other and ordered
+        assert_ne!(
+            AttributeValue::Integer(42),
+            AttributeValue::Text("a".into())
+        );
+        assert_ne!(AttributeValue::Boolean(true), AttributeValue::Id(a));
+        assert!(AttributeValue::Boolean(true) < AttributeValue::Id(a));
+        assert!(AttributeValue::Integer(42) < AttributeValue::Text("a".into()));
     }
 }

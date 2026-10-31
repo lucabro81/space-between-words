@@ -139,14 +139,17 @@ mod tests {
     use super::*;
 
     fn sample_event() -> Event {
+        let element = ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes");
         Event::new(
             Meaning::new("preso"),
-            vec![],
-            vec![InvolvedEntity::Element(
-                ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes"),
-            )],
+            vec![Effect::MoveElement {
+                id: element,
+                from: Some(ElementId::from_bytes(&2u64.to_be_bytes()).expect("8 bytes")),
+                to: None,
+            }],
+            vec![InvolvedEntity::Element(element)],
             Some(VigilId::from_bytes(&7u64.to_be_bytes()).expect("8 bytes")),
-            vec![],
+            vec![ThreadId::from_bytes(&3u64.to_be_bytes()).expect("8 bytes")],
             WallTime::new(1_000),
             vec![DiceOutcome::new("attack, 1d20", 14)],
         )
@@ -165,13 +168,25 @@ mod tests {
     fn event_carries_its_parts() {
         let event = sample_event();
         assert_eq!(event.meaning().as_str(), "preso");
-        assert!(event.effects().is_empty());
-        assert_eq!(event.involved().len(), 1);
+        let element = ElementId::from_bytes(&1u64.to_be_bytes()).expect("8 bytes");
+        let from = ElementId::from_bytes(&2u64.to_be_bytes()).expect("8 bytes");
+        assert_eq!(
+            event.effects(),
+            [Effect::MoveElement {
+                id: element,
+                from: Some(from),
+                to: None,
+            }]
+        );
+        assert_eq!(event.involved(), [InvolvedEntity::Element(element)]);
         assert_eq!(
             event.vigil(),
             Some(VigilId::from_bytes(&7u64.to_be_bytes()).expect("8 bytes"))
         );
-        assert!(event.threads().is_empty());
+        assert_eq!(
+            event.threads(),
+            [ThreadId::from_bytes(&3u64.to_be_bytes()).expect("8 bytes")]
+        );
         assert_eq!(event.wall_time(), WallTime::new(1_000));
         assert_eq!(event.dice_outcomes()[0].result(), 14);
         assert_eq!(event.dice_outcomes()[0].reason(), "attack, 1d20");
