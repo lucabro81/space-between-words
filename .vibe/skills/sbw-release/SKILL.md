@@ -1,17 +1,25 @@
 ---
 name: sbw-release
-description: Load after the PR has been squash-merged and main is synced. Runs the release on main — version bump, tags, cargo publish — and verifies the GitHub Release and CI. Supervised by Luca.
+description: Load after the PR has been squash-merged and main is synced. Runs the release on main — version bump, tag, push — and verifies locally with the quality gate. Supervised by Luca.
 user-invocable: true
 ---
 
 # sbw Release — Phase 6: Post-Merge Release on Main
 
 This skill is used **after** the PR has been squash-merged and `main` is
-synced locally. It runs the release on `main` — version bump, tags, publish —
-and verifies the downstream CI (GitHub Release, crates.io).
+synced locally. It runs the release on `main`: version bump, tag, push,
+verified locally with the quality gate.
 
 The code changes were developed on the branch (in `sbw-tdd`), reviewed by the
 gate, and merged into `main` with the PR.
+
+## Not part of this process
+
+Publishing to crates.io and a GitHub Actions pipeline are **not** part of
+sbw's release process: this repo has no CI configuration, and Luca has
+decided not to publish the crates. Nothing leaves the repo in a release.
+Adding either is Luca's future decision and would go through its own
+issue; this skill must not be edited to reintroduce them without one.
 
 ## Prerequisites
 
@@ -19,67 +27,51 @@ gate, and merged into `main` with the PR.
 - You are on `main`: `git checkout main`
 - `main` is synced: `git pull`
 - The feature branch is deleted: `git branch -d feat/<N>-<slug>`
-- Cargo workspace versions are consistent across `Cargo.toml` files
+- Luca has chosen the version number to release
 
 ## Steps
 
 ### 1. Bump versions
 
-Update the version in both crate manifests and the workspace:
+Update the version in **both crate manifests** —
+`crates/sbw-kernel/Cargo.toml` and `crates/sbw-eventlog/Cargo.toml` —
+following semver. The workspace root `Cargo.toml` has no `version` field:
+there is nothing to bump there.
+
+Verify the tree compiles, then commit the version bump:
 
 ```bash
-# Edit Cargo.toml (workspace.package.version) and each crate's Cargo.toml
-# to the new version number, following semver.
-```
-
-Verify:
-```bash
-cargo check --workspace   # must compile cleanly with the new version
-```
-
-Commit the version bump:
-```bash
+cargo check --workspace    # must compile cleanly with the new version
 git add -A && git commit -m "chore(release): bump version to X.Y.Z"
 ```
 
-### 2. Create the git tag
+### 2. Verify the release commit
+
+Run the full quality gate from the repo root on the release commit:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+./scripts/check-kernel-purity.sh
+```
+
+All four must pass before the tag is created. If anything fails, stop and
+bring it to Luca: do not re-tag or move anything without his decision.
+
+### 3. Create the git tag
 
 ```bash
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 ```
 
-### 3. Publish to crates.io
-
-Publish in dependency order (kernel first, then eventlog):
-
-```bash
-cargo publish -p sbw-kernel
-cargo publish -p sbw-eventlog
-```
-
-Note: `cargo publish` requires a clean working tree and a crates.io API token.
-Only publish versions not yet on the registry.
-
-### 4. Push with tags
+### 4. Push with the tag
 
 ```bash
 git push && git push --tags
 ```
 
-### 5. Verify CI downstream
-
-The push triggers the GitHub Actions workflow on `main`:
-
-- **CI**: runs `cargo fmt --check`, `cargo clippy`, `cargo test`, and the
-  kernel purity script on the tagged commit
-- **Release**: creates the GitHub Release for the tag
-
-Check the pipeline:
-```bash
-gh run list --branch main --limit 3
-```
-
-### 6. Close the loop
+### 5. Close the loop
 
 Update project memory with anything worth carrying to a future session, and
 bring `README.md` in line if the change affects what it documents.
@@ -87,11 +79,12 @@ bring `README.md` in line if the change affects what it documents.
 ## Rules
 
 - **One release per issue.** Never batch.
-- **Never `cargo publish`** from a feature branch.
 - **The release runs on `main`, never on a feature branch.**
 - **The release is supervised by Luca.** This skill describes the mechanical
-  steps; the decision to release is always his.
+  steps; the decision to release — and the version number — are always his.
 - **Specs under `docs/` are never edited by the release process.**
+- **Nothing leaves the repo.** The deliverable of a release is the git tag
+  on `main`; see "Not part of this process" above.
 
 ## After the release
 
