@@ -1,4 +1,4 @@
-//! K8 acceptance test: the effect vocabulary contains no primitive for
+//! Single-timeline test: the effect vocabulary contains no primitive for
 //! creating, choosing or merging timelines.
 //!
 //! Observable outcome: one instance of every `Effect` variant is mapped to
@@ -56,7 +56,7 @@ fn variant_name(effect: &Effect) -> &'static str {
 }
 
 #[test]
-fn k8_effect_vocabulary_has_no_timeline_primitives() {
+fn effect_vocabulary_has_no_timeline_primitives() {
     let effects = vec![
         Effect::CreateElement {
             id: element_id(1),

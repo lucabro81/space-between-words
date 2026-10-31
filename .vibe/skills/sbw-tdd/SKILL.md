@@ -28,7 +28,8 @@ For each unit of work in the plan:
   - Describe the expected behavior specifically
   - Cover edge cases and limit cases, not just the happy path
   - Use the standard Rust test harness (`#[test]`)
-  - Be named after the acceptance criterion it covers: `k6_…`, `l14_…`
+  - Be named after what it asserts — never after a criterion ID: the code
+    is agnostic of the design documents; criterion IDs live in the issue
 - Run the test and **verify it fails** for the right reason:
   ```bash
   cargo test -p <crate-name> <test_name>

@@ -87,15 +87,17 @@ or partial documentation is a finding.
 
 **Self-contained docs.** Shipped documentation stands alone (AGENTS.md,
 section Documentation): rustdoc and code comments (test files and `wit/`
-included), crate READMEs, the root `README.md`, `AGENTS.md` and the
-**file names** of the diff carry no references to spec files, spec sections
-or the specs' numbering scheme (`spec-01`, `spec-nucleo 5.10`, `§3`,
-`docs/specs/…`, `k4_…`-style test file names). The specs are design-time
-documents that may leave the repo. A spec reference added by the diff, or
-one already present in the documentation surface, is a finding (side
-**docs**: rewrite the statement in self-contained terms). References to
-external standards (RFC 8949) and criterion IDs (`K5`, `k8_…` test
-**function** names) are fine. Rules *about* `docs/` in `AGENTS.md`
+included), crate READMEs, the root `README.md`, `AGENTS.md`, the **file
+names** of the diff and the **test function names** of the diff carry no
+references to spec files, spec sections or the specs' numbering scheme
+(`spec-01`, `spec-nucleo 5.10`, `§3`, `docs/specs/…`, `k4_…`-style test
+file or function names, criterion-ID mentions in comments). The specs are
+design-time documents that may leave the repo, and the code is agnostic
+of them. A spec or criterion reference added by the diff, or one already
+present in the documentation surface, is a finding (side **docs**: rewrite
+the statement in self-contained terms). References to external standards
+(RFC 8949) are fine; criterion IDs (`K5`) are fine in issues, plans and
+PRs — never in the code. Rules *about* `docs/` in `AGENTS.md`
 (read-only rule, repo tree) are fine too.
 
 Also flag contradictions between two documents (a rustdoc comment against

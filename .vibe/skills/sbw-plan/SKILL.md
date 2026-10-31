@@ -38,7 +38,9 @@ decisions are already made and which remain open.
 How to verify it works. For TDD: which tests will be written before the code.
 Which edge cases to cover. How to run them (`cargo test -p sbw-kernel`,
 `cargo clippy --workspace`, etc.). Every acceptance criterion the issue covers
-must have at least one test named with its ID in lowercase (`k6_…`, `l14_…`).
+must have at least one test asserting its observable outcome. Test names
+describe what they assert — the code carries no criterion IDs (it is
+agnostic of the design documents; the IDs live in the issue and the plan).
 
 ### 6. Documentation
 What needs updating: crate rustdoc, root `README.md`, `AGENTS.md`.

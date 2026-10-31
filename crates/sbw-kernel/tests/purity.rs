@@ -1,4 +1,4 @@
-//! K4 acceptance test: the kernel, in its compilation, depends on nothing
+//! Purity test: the kernel, in its compilation, depends on nothing
 //! that accesses network, filesystem, clock or system randomness.
 //!
 //! Observable outcome: every crate in `cargo tree -p sbw-kernel -e normal`
@@ -34,7 +34,7 @@ fn approved_deps() -> Vec<String> {
 }
 
 #[test]
-fn k4_kernel_depends_only_on_approved_crates() {
+fn kernel_depends_only_on_approved_crates() {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
     let output = Command::new("cargo")
         .args([
