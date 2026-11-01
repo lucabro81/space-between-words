@@ -143,17 +143,9 @@ impl Rule for NailedLantern {
         )
     }
 
-    fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<Event> {
+    fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
         if trigger.meaning().as_str() == "preso" {
-            vec![Event::new(
-                Meaning::new("trap"),
-                Vec::new(),
-                vec![InvolvedEntity::Element(element_id(LANTERN))],
-                None,
-                Vec::new(),
-                trigger.wall_time(),
-                Vec::new(),
-            )]
+            vec![ExecutionOutput::new(Meaning::new("trap"), Vec::new())]
         } else {
             Vec::new()
         }
@@ -192,7 +184,7 @@ impl Rule for LockPicking {
         }
     }
 
-    fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<Event> {
+    fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
         Vec::new()
     }
 }

@@ -87,8 +87,10 @@ pub trait Rule {
 
     /// Additional events triggered by an event just produced (reactions
     /// that run before, instead of, or after the action), in the same
-    /// response.
-    fn react(&self, state: &StateView<'_>, trigger: &Event) -> Vec<Event>;
+    /// response. Rules return execution outputs; the kernel builds the
+    /// events, stamping the fields it owns (wall time, dice outcomes,
+    /// thread membership) on every one of them.
+    fn react(&self, state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput>;
 }
 
 #[cfg(test)]
@@ -118,7 +120,7 @@ mod tests {
             ExecutionOutput::new(Meaning::new("niente"), Vec::new())
         }
 
-        fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<Event> {
+        fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
             Vec::new()
         }
     }
