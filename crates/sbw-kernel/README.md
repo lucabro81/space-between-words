@@ -2,9 +2,9 @@
 
 Block 1 of space-between-worlds: the Nucleo (kernel).
 
-Pure, deterministic core: `decide` (state + command → events or refusal) and
-`apply` (state + event → new state), with state, effects, the rule trait,
-dice, threads and fiction time.
+Pure, deterministic core: `decide` (state + command → events, refusal or a
+depth-limit error) and `apply` (state + event → new state), with state,
+effects, the rule trait, dice, threads and fiction time.
 
 Modules:
 
