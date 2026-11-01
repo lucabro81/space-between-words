@@ -370,7 +370,7 @@ fn every_effect_of_the_vocabulary_applies() {
     );
 
     // remove an element; its removal is recorded, so removing it again
-    // reports a before-value mismatch
+    // reports an unknown-element error
     let remove = Event::new(
         Meaning::new("distrutto"),
         vec![Effect::RemoveElement {

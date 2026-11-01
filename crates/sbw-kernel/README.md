@@ -2,8 +2,8 @@
 
 Block 1 of space-between-worlds: the Nucleo (kernel).
 
-Pure, deterministic core: `decide` (state + command → events, refusal or a
-depth-limit error) and `apply` (state + event → new state), with state,
+Pure, deterministic core: `decide` (state + command → events, refusal or
+a reported error) and `apply` (state + event → new state), with state,
 effects, the rule trait, dice, threads and fiction time.
 
 Modules:
@@ -15,8 +15,9 @@ Modules:
   parameters, wall time, dice material
 - `apply` — the kernel's second operation: state + event → new state, using
   only the event's effects (replay never runs the rules)
-- `decide` — the response cycle: state + command + rules → events, refusal
-  or a reported depth-limit error; stamps every event it produces
+- `decide` — the response cycle: state + command + rules → events, refusal,
+  or a reported error (reaction depth limit exceeded, or an event that did
+  not apply); stamps every event it produces
 - `error` — the structured errors of `decide` and `apply`
 - `meaning` — the open-vocabulary label of an event
 - `effect` — the closed vocabulary of state changes, attribute values,

@@ -3,7 +3,8 @@
 //! author's rules. This is what makes replaying the event log independent
 //! of rule changes: every effect that carries a "before" value is verified
 //! against the current state before anything is modified, and effects
-//! without one are checked for the entities they reference.
+//! without one are checked for the entity they act on — the element, the
+//! container, the incarnation, the thread or vigil, the deadline.
 //!
 //! Pure: no I/O, no clock, no randomness, and the rules are never invoked.
 //! The input state is never mutated: `apply` works on a clone and returns
@@ -117,6 +118,21 @@ fn apply_effect(state: &mut State, effect: &Effect, index: usize) -> Result<(), 
             old,
             new,
         } => {
+            match owner {
+                AttributeOwner::Element(id) if !state.elements().contains_key(id) => {
+                    return Err(ApplyError::UnknownElement {
+                        effect_index: index,
+                        id: *id,
+                    });
+                }
+                AttributeOwner::Incarnation(id) if !state.incarnations().contains_key(id) => {
+                    return Err(ApplyError::UnknownIncarnation {
+                        effect_index: index,
+                        id: *id,
+                    });
+                }
+                _ => {}
+            }
             let current = state.attribute(&AttributeKey::new(owner.clone(), name.clone()));
             if current != old.as_ref() {
                 return Err(ApplyError::BeforeMismatch {
@@ -208,11 +224,21 @@ fn apply_effect(state: &mut State, effect: &Effect, index: usize) -> Result<(), 
 }
 
 /// Whether making `container` the container of `element` would create a
-/// cycle: walking up from `container`, do we reach `element`?
+/// cycle: walking up from `container`, do we reach `element`? The walk is
+/// bounded by the number of elements: on a well-formed tree it reaches the
+/// root well within that, so a longer walk means the state itself is
+/// already cyclic — and the move is rejected either way. `apply` never
+/// creates a cycle itself, but the signature accepts any `&State`, so the
+/// walk must always terminate.
 fn would_cycle(state: &State, element: ElementId, container: ElementId) -> bool {
     let mut cursor = Some(container);
+    let mut steps = 0usize;
     while let Some(current) = cursor {
         if current == element {
+            return true;
+        }
+        steps += 1;
+        if steps > state.elements().len() {
             return true;
         }
         cursor = state
@@ -492,6 +518,31 @@ mod tests {
         }]);
         assert!(matches!(
             apply(&state, &vigil),
+            Err(ApplyError::UnknownIncarnation { .. })
+        ));
+    }
+
+    #[test]
+    fn apply_rejects_an_attribute_on_a_missing_owner() {
+        let state = world_with_lantern();
+        let on_element = event(vec![Effect::SetAttribute {
+            owner: AttributeOwner::Element(element(99)),
+            name: "lit".into(),
+            old: None,
+            new: AttributeValue::Boolean(true),
+        }]);
+        assert!(matches!(
+            apply(&state, &on_element),
+            Err(ApplyError::UnknownElement { .. })
+        ));
+        let on_incarnation = event(vec![Effect::SetAttribute {
+            owner: AttributeOwner::Incarnation(IncarnationId::from_raw(42)),
+            name: "hunger".into(),
+            old: None,
+            new: AttributeValue::Integer(1),
+        }]);
+        assert!(matches!(
+            apply(&state, &on_incarnation),
             Err(ApplyError::UnknownIncarnation { .. })
         ));
     }
