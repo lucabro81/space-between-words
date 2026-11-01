@@ -77,13 +77,14 @@ pub trait Rule {
     fn check(&self, state: &StateView<'_>, command: &Command) -> Result<(), Refusal>;
 
     /// Executes an accepted command: produces the meaning and the effects,
-    /// given the recorded dice outcomes.
+    /// given the recorded dice outcomes. `None` means the command changed
+    /// nothing: no event is produced and the response may be empty.
     fn execute(
         &self,
         state: &StateView<'_>,
         command: &Command,
         dice: &[DiceOutcome],
-    ) -> ExecutionOutput;
+    ) -> Option<ExecutionOutput>;
 
     /// Additional events triggered by an event just produced (reactions
     /// that run before, instead of, or after the action), in the same
@@ -116,8 +117,8 @@ mod tests {
             _state: &StateView<'_>,
             _command: &Command,
             _dice: &[DiceOutcome],
-        ) -> ExecutionOutput {
-            ExecutionOutput::new(Meaning::new("niente"), Vec::new())
+        ) -> Option<ExecutionOutput> {
+            Some(ExecutionOutput::new(Meaning::new("niente"), Vec::new()))
         }
 
         fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
@@ -175,7 +176,10 @@ mod tests {
         assert!(rule.available_commands(&view, command.who()).is_empty());
         assert!(rule.check(&view, &command).is_ok());
         assert_eq!(
-            rule.execute(&view, &command, &[]).meaning().as_str(),
+            rule.execute(&view, &command, &[])
+                .expect("an output")
+                .meaning()
+                .as_str(),
             "niente"
         );
     }

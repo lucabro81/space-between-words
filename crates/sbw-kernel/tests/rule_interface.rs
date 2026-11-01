@@ -132,15 +132,15 @@ impl Rule for NailedLantern {
         _state: &StateView<'_>,
         _command: &Command,
         _dice: &[DiceOutcome],
-    ) -> ExecutionOutput {
-        ExecutionOutput::new(
+    ) -> Option<ExecutionOutput> {
+        Some(ExecutionOutput::new(
             Meaning::new("preso"),
             vec![Effect::MoveElement {
                 id: element_id(LANTERN),
                 from: Some(element_id(CANTINA)),
                 to: None,
             }],
-        )
+        ))
     }
 
     fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
@@ -176,11 +176,11 @@ impl Rule for LockPicking {
         _state: &StateView<'_>,
         _command: &Command,
         dice: &[DiceOutcome],
-    ) -> ExecutionOutput {
+    ) -> Option<ExecutionOutput> {
         if dice.iter().any(|outcome| outcome.result() < 10) {
-            ExecutionOutput::new(Meaning::new("fallito"), Vec::new())
+            Some(ExecutionOutput::new(Meaning::new("fallito"), Vec::new()))
         } else {
-            ExecutionOutput::new(Meaning::new("scassinato"), Vec::new())
+            Some(ExecutionOutput::new(Meaning::new("scassinato"), Vec::new()))
         }
     }
 
@@ -220,7 +220,7 @@ fn rule_trait_is_object_safe_and_callable_through_dyn() {
     let command = take_lantern();
     assert_eq!(rule.available_commands(&view, command.who()).len(), 1);
     assert!(rule.check(&view, &command).is_err());
-    let output = rule.execute(&view, &command, &[]);
+    let output = rule.execute(&view, &command, &[]).expect("an output");
     assert_eq!(output.meaning().as_str(), "preso");
     assert_eq!(rule.react(&view, &taken_lantern_event()).len(), 1);
 }
@@ -260,7 +260,7 @@ fn failed_lockpick_execution_yields_failure_meaning_and_the_event_records_the_ro
     );
     // a failed roll: a failure, not a refusal — the output says "fallito"
     let dice = [DiceOutcome::new("lockpick, 1d20", 3)];
-    let output = rule.execute(&view, &command, &dice);
+    let output = rule.execute(&view, &command, &dice).expect("an output");
     assert_eq!(output.meaning().as_str(), "fallito");
     // the event recorded for this execution carries the roll, and no event
     // the kernel produces is ever exposed
@@ -278,7 +278,9 @@ fn failed_lockpick_execution_yields_failure_meaning_and_the_event_records_the_ro
     assert!(!event.exposed());
     // a successful roll succeeds instead
     let good_dice = [DiceOutcome::new("lockpick, 1d20", 17)];
-    let output = rule.execute(&view, &command, &good_dice);
+    let output = rule
+        .execute(&view, &command, &good_dice)
+        .expect("an output");
     assert_eq!(output.meaning().as_str(), "scassinato");
 }
 

@@ -7,7 +7,7 @@
 mod common;
 
 use common::{
-    ADA, CANTINA, DOOR, INVENTORY, LANTERN, anchor, element_id, incarnation_id, take_lantern,
+    ADA, CANTINA, DOOR, INVENTORY, LANTERN, element_id, incarnation_id, take_lantern,
     world_with_lantern, world_with_lantern_elsewhere,
 };
 use sbw_kernel::command::{Command, CommandParam, CommandSource};
@@ -82,19 +82,19 @@ impl Rule for LanternRules {
         state: &StateView<'_>,
         _command: &Command,
         _dice: &[DiceOutcome],
-    ) -> ExecutionOutput {
+    ) -> Option<ExecutionOutput> {
         let from = state
             .elements()
             .get(&element_id(LANTERN))
             .and_then(|lantern| lantern.container());
-        ExecutionOutput::new(
+        Some(ExecutionOutput::new(
             Meaning::new("preso"),
             vec![Effect::MoveElement {
                 id: element_id(LANTERN),
                 from,
                 to: Some(element_id(INVENTORY)),
             }],
-        )
+        ))
     }
 
     fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
@@ -141,7 +141,7 @@ impl Rule for NailedLanternRules {
         state: &StateView<'_>,
         command: &Command,
         dice: &[DiceOutcome],
-    ) -> ExecutionOutput {
+    ) -> Option<ExecutionOutput> {
         LanternRules.execute(state, command, dice)
     }
 
@@ -181,8 +181,8 @@ impl Rule for LoopRules {
         _state: &StateView<'_>,
         _command: &Command,
         _dice: &[DiceOutcome],
-    ) -> ExecutionOutput {
-        Self::loop_output()
+    ) -> Option<ExecutionOutput> {
+        Some(Self::loop_output())
     }
 
     fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
@@ -211,12 +211,118 @@ impl Rule for QuietTimeRules {
         _state: &StateView<'_>,
         _command: &Command,
         _dice: &[DiceOutcome],
-    ) -> ExecutionOutput {
-        ExecutionOutput::new(Meaning::new("niente"), Vec::new())
+    ) -> Option<ExecutionOutput> {
+        // accepted, but nothing happened: no event
+        None
     }
 
     fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
         Vec::new()
+    }
+}
+
+/// A reaction chain of a fixed length: every "loop" event carries its depth
+/// in the effect, and the chain stops at `max`.
+struct CountingLoopRules {
+    max: usize,
+}
+
+impl CountingLoopRules {
+    fn counted_output(count: i64) -> ExecutionOutput {
+        ExecutionOutput::new(
+            Meaning::new("loop"),
+            vec![Effect::SetAttribute {
+                owner: AttributeOwner::Element(element_id(DOOR)),
+                name: "count".into(),
+                old: None,
+                new: AttributeValue::Integer(count),
+            }],
+        )
+    }
+
+    fn count_of(trigger: &Event) -> Option<i64> {
+        trigger.effects().iter().find_map(|effect| match effect {
+            Effect::SetAttribute {
+                new: AttributeValue::Integer(count),
+                ..
+            } => Some(*count),
+            _ => None,
+        })
+    }
+}
+
+impl Rule for CountingLoopRules {
+    fn available_commands(&self, _state: &StateView<'_>, _who: &CommandSource) -> Vec<Command> {
+        Vec::new()
+    }
+
+    fn check(&self, _state: &StateView<'_>, _command: &Command) -> Result<(), Refusal> {
+        Ok(())
+    }
+
+    fn execute(
+        &self,
+        _state: &StateView<'_>,
+        _command: &Command,
+        _dice: &[DiceOutcome],
+    ) -> Option<ExecutionOutput> {
+        Some(Self::counted_output(1))
+    }
+
+    fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
+        if trigger.meaning().as_str() == "loop"
+            && let Some(count) = Self::count_of(trigger)
+            && (count as usize) < self.max
+        {
+            return vec![Self::counted_output(count + 1)];
+        }
+        Vec::new()
+    }
+}
+
+/// Rules with several reactions per round, to pin the evaluation order.
+struct OrderingRules;
+
+impl OrderingRules {
+    fn output(meaning: &str, count: i64) -> ExecutionOutput {
+        ExecutionOutput::new(
+            Meaning::new(meaning),
+            vec![Effect::SetAttribute {
+                owner: AttributeOwner::Element(element_id(DOOR)),
+                name: "count".into(),
+                old: None,
+                new: AttributeValue::Integer(count),
+            }],
+        )
+    }
+}
+
+impl Rule for OrderingRules {
+    fn available_commands(&self, _state: &StateView<'_>, _who: &CommandSource) -> Vec<Command> {
+        Vec::new()
+    }
+
+    fn check(&self, _state: &StateView<'_>, _command: &Command) -> Result<(), Refusal> {
+        Ok(())
+    }
+
+    fn execute(
+        &self,
+        _state: &StateView<'_>,
+        _command: &Command,
+        _dice: &[DiceOutcome],
+    ) -> Option<ExecutionOutput> {
+        Some(Self::output("start", 0))
+    }
+
+    fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
+        match trigger.meaning().as_str() {
+            // two reactions in the same round, in the rule's order
+            "start" => vec![Self::output("a", 1), Self::output("b", 2)],
+            "a" => vec![Self::output("a1", 3)],
+            "b" => vec![Self::output("b1", 4)],
+            _ => Vec::new(),
+        }
     }
 }
 
@@ -300,6 +406,47 @@ fn trap_reaction_adds_its_event_after_the_taken_event_in_the_same_response() {
     assert_eq!(events.len(), 2);
     assert_eq!(events[0].meaning().as_str(), "preso");
     assert_eq!(events[1].meaning().as_str(), "trap");
+    // reaction events are stamped by the kernel exactly like the first one
+    let trap = &events[1];
+    assert_eq!(trap.wall_time(), WallTime::new(1_000));
+    assert!(!trap.exposed());
+    assert_eq!(trap.involved(), events[0].involved());
+}
+
+#[test]
+fn reaction_rounds_are_evaluated_in_a_deterministic_order() {
+    let state = world_with_lantern();
+    let command = time_command();
+    let events = decide(&state, &command, &OrderingRules).expect("decided");
+    let meanings: Vec<&str> = events.iter().map(|e| e.meaning().as_str()).collect();
+    assert_eq!(meanings, ["start", "a", "b", "a1", "b1"]);
+}
+
+#[test]
+fn a_reaction_chain_at_exactly_the_depth_limit_is_accepted() {
+    let state = world_with_lantern();
+    let command = time_command();
+    let rules = CountingLoopRules {
+        max: REACTION_DEPTH_LIMIT + 1,
+    };
+    let events = decide(&state, &command, &rules).expect("within the limit");
+    assert_eq!(events.len(), REACTION_DEPTH_LIMIT + 1);
+}
+
+#[test]
+fn a_reaction_chain_beyond_the_depth_limit_is_rejected() {
+    let state = world_with_lantern();
+    let command = time_command();
+    let rules = CountingLoopRules {
+        max: REACTION_DEPTH_LIMIT + 2,
+    };
+    let error = decide(&state, &command, &rules).expect_err("beyond the limit");
+    assert_eq!(
+        error,
+        DecideError::DepthLimitExceeded {
+            limit: REACTION_DEPTH_LIMIT
+        }
+    );
 }
 
 #[test]
@@ -324,10 +471,4 @@ fn an_accepted_command_with_no_effects_returns_an_empty_response() {
     let command = time_command();
     let events = decide(&state, &command, &QuietTimeRules).expect("accepted");
     assert!(events.is_empty());
-}
-
-#[test]
-fn anchor_helper_is_used_by_fixtures() {
-    // keep the shared anchor in use: the worlds above are built on it
-    assert_eq!(world_with_lantern().time_anchor(), anchor());
 }

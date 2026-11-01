@@ -19,21 +19,21 @@ use crate::rule::{ExecutionOutput, Rule, StateView};
 use crate::state::{State, ThreadSkeleton, VigilSkeleton};
 use crate::time::Seed;
 
-/// The maximum number of reaction rounds in one response. One mechanism and
-/// one limit for reactions and thread generators alike: exceeding it is a
-/// reported error and the whole response is discarded — no events, state
-/// unchanged. Never a silent truncation.
+/// The maximum reaction depth of one response. One mechanism and one limit
+/// for reactions and thread generators alike: a chain whose depth *exceeds*
+/// the limit is a reported error and the whole response is discarded — no
+/// events, state unchanged. Never a silent truncation.
 pub const REACTION_DEPTH_LIMIT: usize = 100;
 
 /// Runs the response cycle for a command against a state and a ruleset.
 ///
 /// - `Err(DecideError::Refusal)`: the command makes no sense in this state;
 ///   no events, the state is unchanged.
-/// - `Err(DecideError::DepthLimitExceeded)`: the reaction chain never ended;
-///   no events, the state is unchanged.
-/// - `Ok(events)`: the response group. Empty when the accepted command
-///   produced no effects — a command that changes nothing produces no
-///   events.
+/// - `Err(DecideError::DepthLimitExceeded)`: the reaction chain went deeper
+///   than the limit; no events, the state is unchanged.
+/// - `Ok(events)`: the response group, in evaluation order. Empty when the
+///   accepted command produced no event — a command that changes nothing
+///   produces no events.
 pub fn decide<R: Rule>(
     state: &State,
     command: &Command,
@@ -49,50 +49,53 @@ pub fn decide<R: Rule>(
     let working = state.clone();
     let mut events: Vec<Event> = Vec::new();
     let mut pending: Vec<Event> = Vec::new();
-    let output = rules.execute(&view, command, &dice);
-    if let Some(event) = build_event(&working, command, &output, &dice) {
+    if let Some(output) = rules.execute(&view, command, &dice) {
+        let event = build_event(&working, command, &output, &dice);
         events.push(event.clone());
         pending.push(event);
     }
-    let mut round = 0usize;
+    // reaction rounds in breadth-first order: deterministic, and at parity
+    // by IDs, since every structure iterated here is ordered
+    let mut depth = 0usize;
     while !pending.is_empty() {
-        round += 1;
-        if round > REACTION_DEPTH_LIMIT {
-            return Err(DecideError::DepthLimitExceeded {
-                limit: REACTION_DEPTH_LIMIT,
-            });
-        }
         let triggers = std::mem::take(&mut pending);
+        let mut next: Vec<Event> = Vec::new();
         for trigger in &triggers {
             for output in rules.react(&StateView::new(&working), trigger) {
-                if let Some(event) = build_event(&working, command, &output, &dice) {
-                    events.push(event.clone());
-                    pending.push(event);
-                }
+                let event = build_event(&working, command, &output, &dice);
+                events.push(event.clone());
+                next.push(event);
             }
         }
+        if !next.is_empty() {
+            depth += 1;
+            if depth > REACTION_DEPTH_LIMIT {
+                return Err(DecideError::DepthLimitExceeded {
+                    limit: REACTION_DEPTH_LIMIT,
+                });
+            }
+        }
+        pending = next;
     }
     Ok(events)
 }
 
-/// Builds the event for an execution output. An output with no effects
-/// produces no event: a command that changes nothing produces no events.
-/// The kernel stamps everything else — involved entities from the command,
-/// the actor's open vigil, thread membership, wall time, dice outcomes.
-/// `exposed` is always `false`: the event constructor enforces it.
+/// Builds the event for an execution output. Every output becomes an event,
+/// even one with no effects — a failure is an execution too and is recorded
+/// like any event. The kernel stamps the fields it owns: involved entities
+/// from the command, the actor's open vigil, thread membership, wall time,
+/// dice outcomes. `exposed` is always `false`: the event constructor
+/// enforces it.
 fn build_event(
     state: &State,
     command: &Command,
     output: &ExecutionOutput,
     dice: &[DiceOutcome],
-) -> Option<Event> {
-    if output.effects().is_empty() {
-        return None;
-    }
+) -> Event {
     let involved = involved_from_command(command);
     let vigil = vigil_of(state.open_vigils(), command.who());
     let threads = threads_for(state.open_threads(), &involved);
-    Some(Event::new(
+    Event::new(
         output.meaning().clone(),
         output.effects().to_vec(),
         involved,
@@ -100,7 +103,7 @@ fn build_event(
         threads,
         command.wall_time(),
         dice.to_vec(),
-    ))
+    )
 }
 
 /// The entities a command involves: its source plus the elements and
@@ -259,7 +262,9 @@ mod tests {
     }
 
     #[test]
-    fn an_output_with_no_effects_builds_no_event() {
+    fn an_output_with_no_effects_still_builds_an_event() {
+        // a failure is an execution too: it is recorded like any event,
+        // even when it carries no effects
         let state = State::new(anchor());
         let command = Command::new(
             CommandSource::World,
@@ -268,8 +273,10 @@ mod tests {
             WallTime::new(5),
             Seed::new(Vec::new()),
         );
-        let output = ExecutionOutput::new(Meaning::new("niente"), Vec::new());
-        assert!(build_event(&state, &command, &output, &[]).is_none());
+        let output = ExecutionOutput::new(Meaning::new("fallito"), Vec::new());
+        let event = build_event(&state, &command, &output, &[]);
+        assert_eq!(event.meaning().as_str(), "fallito");
+        assert!(event.effects().is_empty());
     }
 
     #[test]
@@ -291,7 +298,7 @@ mod tests {
             }],
         );
         let dice = [DiceOutcome::new("attack, 1d20", 14)];
-        let event = build_event(&state, &command, &output, &dice).expect("effects present");
+        let event = build_event(&state, &command, &output, &dice);
         assert_eq!(event.meaning().as_str(), "preso");
         assert_eq!(event.wall_time(), WallTime::new(1_000));
         assert_eq!(event.dice_outcomes(), dice);
