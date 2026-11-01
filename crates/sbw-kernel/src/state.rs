@@ -257,6 +257,85 @@ impl State {
         self.attributes.get(key)
     }
 
+    /// Removes an element from the world. Its recorded attributes stay in
+    /// the map, still keyed to the removed element's ID — preserved so a
+    /// later recreation can pick them up. The existence check is the
+    /// caller's: `apply` verifies it before calling.
+    pub fn remove_element(&mut self, id: ElementId) {
+        self.elements.remove(&id);
+    }
+
+    /// Moves an element to another container. `None` is the world root.
+    /// The coherence of the move is the caller's: `apply` verifies the
+    /// recorded "before" container first.
+    pub fn move_element(&mut self, id: ElementId, container: Option<ElementId>) {
+        if let Some(element) = self.elements.get_mut(&id) {
+            element.container = container;
+        }
+    }
+
+    /// Sets an attribute. The coherence of the recorded "before" value
+    /// is the caller's: `apply` verifies it first.
+    pub fn set_attribute(
+        &mut self,
+        owner: AttributeOwner,
+        name: impl Into<String>,
+        value: AttributeValue,
+    ) {
+        self.attributes
+            .insert(AttributeKey::new(owner, name), value);
+    }
+
+    /// Opens a vigil, replacing any skeleton with the same ID.
+    pub fn open_vigil(&mut self, vigil: VigilSkeleton) {
+        self.open_vigils.insert(vigil.id(), vigil);
+    }
+
+    /// Closes a vigil. Closing an unknown vigil is a no-op: the coherence
+    /// of the log is `apply`'s to verify before calling.
+    pub fn close_vigil(&mut self, id: VigilId) {
+        self.open_vigils.remove(&id);
+    }
+
+    /// Opens a thread, replacing any skeleton with the same ID.
+    pub fn open_thread(&mut self, thread: ThreadSkeleton) {
+        self.open_threads.insert(thread.id(), thread);
+    }
+
+    /// Closes a thread. Closing an unknown thread is a no-op: the
+    /// coherence of the log is `apply`'s to verify before calling.
+    pub fn close_thread(&mut self, id: ThreadId) {
+        self.open_threads.remove(&id);
+    }
+
+    /// Schedules a deadline, appending it to the fiction time it matures
+    /// at.
+    pub fn schedule_deadline(&mut self, deadline: Deadline) {
+        self.deadlines
+            .entry(deadline.world_time())
+            .or_default()
+            .push(deadline);
+    }
+
+    /// Cancels one scheduled deadline: the first equal to it at its
+    /// fiction time. Cancelling an unscheduled deadline is a no-op.
+    pub fn cancel_deadline(&mut self, deadline: &Deadline) {
+        if let Some(list) = self.deadlines.get_mut(&deadline.world_time()) {
+            if let Some(position) = list.iter().position(|scheduled| scheduled == deadline) {
+                list.remove(position);
+            }
+            if list.is_empty() {
+                self.deadlines.remove(&deadline.world_time());
+            }
+        }
+    }
+
+    /// Replaces the fiction-time anchor. The coherence of the recorded
+    /// "before" anchor is the caller's: `apply` verifies it first.
+    pub fn set_time_anchor(&mut self, anchor: TimeAnchor) {
+        self.time_anchor = anchor;
+    }
+
     /// The elements of the world, in ID order.
     pub fn elements(&self) -> &BTreeMap<ElementId, ElementSkeleton> {
         &self.elements
@@ -381,6 +460,22 @@ mod tests {
                 id: ElementId::from_raw(42)
             })
         );
+    }
+
+    #[test]
+    fn cancel_deadline_removes_one_of_two_identical_deadlines() {
+        use crate::effect::{Deadline, DeadlinePayload};
+        let mut state = State::new(anchor());
+        let deadline = Deadline::new(WorldTime::new(900), DeadlinePayload::new("wake", vec![]));
+        state.schedule_deadline(deadline.clone());
+        state.schedule_deadline(deadline.clone());
+        state.cancel_deadline(&deadline);
+        assert_eq!(
+            state.deadlines().get(&WorldTime::new(900)),
+            Some(&vec![deadline.clone()])
+        );
+        state.cancel_deadline(&deadline);
+        assert!(state.deadlines().get(&WorldTime::new(900)).is_none());
     }
 
     #[test]

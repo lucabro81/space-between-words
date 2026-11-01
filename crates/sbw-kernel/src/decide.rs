@@ -11,6 +11,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::apply::apply;
 use crate::command::{Command, CommandParam, CommandSource};
 use crate::error::DecideError;
 use crate::event::{DiceOutcome, Event, InvolvedEntity};
@@ -31,6 +32,9 @@ pub const REACTION_DEPTH_LIMIT: usize = 100;
 ///   no events, the state is unchanged.
 /// - `Err(DecideError::DepthLimitExceeded)`: the reaction chain went deeper
 ///   than the limit; no events, the state is unchanged.
+/// - `Err(DecideError::ApplyFailed)`: an event produced during the response
+///   did not apply cleanly to the working copy; the whole response is
+///   discarded — no events, the state is unchanged.
 /// - `Ok(events)`: the response group, in evaluation order. Empty when the
 ///   accepted command produced no event — a command that changes nothing
 ///   produces no events.
@@ -44,13 +48,15 @@ pub fn decide<R: Rule>(
         return Err(DecideError::Refusal(refusal));
     }
     let dice = expand_dice_material(command.dice_material());
-    // the working copy: applying the produced events to it is `apply`'s job;
-    // until then reactions see the copy as it stands
-    let working = state.clone();
+    // the working copy: each produced event applies to it, so later
+    // reaction rounds see the state as the earlier events left it; the
+    // caller's state is never touched
+    let mut working = state.clone();
     let mut events: Vec<Event> = Vec::new();
     let mut pending: Vec<Event> = Vec::new();
     if let Some(output) = rules.execute(&view, command, &dice) {
         let event = build_event(&working, command, &output, &dice);
+        working = apply(&working, &event).map_err(DecideError::from)?;
         events.push(event.clone());
         pending.push(event);
     }
@@ -63,6 +69,7 @@ pub fn decide<R: Rule>(
         for trigger in &triggers {
             for output in rules.react(&StateView::new(&working), trigger) {
                 let event = build_event(&working, command, &output, &dice);
+                working = apply(&working, &event).map_err(DecideError::from)?;
                 events.push(event.clone());
                 next.push(event);
             }

@@ -9,7 +9,7 @@
 //! expected list fails the assertion.
 
 use sbw_kernel::effect::{AttributeValue, Deadline, DeadlinePayload, Effect, Rate, TimeAnchor};
-use sbw_kernel::id::{ElementId, ThreadId, VigilId};
+use sbw_kernel::id::{ElementId, IncarnationId, ThreadId, VigilId};
 use sbw_kernel::state::AttributeOwner;
 use sbw_kernel::time::{WallTime, WorldTime};
 
@@ -76,7 +76,11 @@ fn effect_vocabulary_has_no_timeline_primitives() {
             old: None,
             new: AttributeValue::Boolean(true),
         },
-        Effect::OpenThread { id: thread_id(1) },
+        Effect::OpenThread {
+            id: thread_id(1),
+            elements: vec![element_id(1)],
+            incarnations: vec![],
+        },
         Effect::CloseThread { id: thread_id(1) },
         Effect::ScheduleDeadline {
             deadline: deadline(),
@@ -88,7 +92,10 @@ fn effect_vocabulary_has_no_timeline_primitives() {
             old: anchor(),
             new: anchor(),
         },
-        Effect::OpenVigil { id: vigil_id(1) },
+        Effect::OpenVigil {
+            id: vigil_id(1),
+            incarnation: IncarnationId::from_bytes(&7u64.to_be_bytes()).expect("8 bytes"),
+        },
         Effect::CloseVigil { id: vigil_id(1) },
     ];
 

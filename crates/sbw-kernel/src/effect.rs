@@ -4,7 +4,7 @@
 //! vocabulary is fixed: a change to it is a new framework version, which is
 //! the price of replaying the log without the author's rules.
 
-use crate::id::{ElementId, ThreadId, VigilId};
+use crate::id::{ElementId, IncarnationId, ThreadId, VigilId};
 use crate::state::AttributeOwner;
 use crate::time::{WallTime, WorldTime};
 
@@ -187,8 +187,15 @@ pub enum Effect {
         old: Option<AttributeValue>,
         new: AttributeValue,
     },
-    /// Open a thread.
-    OpenThread { id: ThreadId },
+    /// Open a thread: its id plus the elements and incarnations it
+    /// follows. The followed entities travel with the effect so replay
+    /// rebuilds the thread exactly as it was opened — the log is the only
+    /// source of truth.
+    OpenThread {
+        id: ThreadId,
+        elements: Vec<ElementId>,
+        incarnations: Vec<IncarnationId>,
+    },
     /// Close a thread.
     CloseThread { id: ThreadId },
     /// Schedule a deadline.
@@ -199,8 +206,13 @@ pub enum Effect {
     /// is a move plus an anchor set with before/after swapped — no extra
     /// primitive.
     SetTimeAnchor { old: TimeAnchor, new: TimeAnchor },
-    /// Open a vigil.
-    OpenVigil { id: VigilId },
+    /// Open a vigil: its id plus the incarnation it belongs to. The
+    /// incarnation travels with the effect so replay rebuilds the vigil
+    /// exactly as it was opened.
+    OpenVigil {
+        id: VigilId,
+        incarnation: IncarnationId,
+    },
     /// Close a vigil.
     CloseVigil { id: VigilId },
 }

@@ -150,18 +150,29 @@ impl Rule for NailedLanternRules {
     }
 }
 
+/// Reads the `count` an event just set, if it set one.
+fn count_of(trigger: &Event) -> Option<i64> {
+    trigger.effects().iter().find_map(|effect| match effect {
+        Effect::SetAttribute {
+            new: AttributeValue::Integer(count),
+            ..
+        } => Some(*count),
+        _ => None,
+    })
+}
+
 /// The endless-loop rules: every "loop" event triggers another one.
 struct LoopRules;
 
 impl LoopRules {
-    fn loop_output() -> ExecutionOutput {
+    fn loop_output(old: Option<AttributeValue>, new: i64) -> ExecutionOutput {
         ExecutionOutput::new(
             Meaning::new("loop"),
             vec![Effect::SetAttribute {
                 owner: AttributeOwner::Element(element_id(DOOR)),
                 name: "count".into(),
-                old: None,
-                new: AttributeValue::Integer(1),
+                old,
+                new: AttributeValue::Integer(new),
             }],
         )
     }
@@ -182,12 +193,15 @@ impl Rule for LoopRules {
         _command: &Command,
         _dice: &[DiceOutcome],
     ) -> Option<ExecutionOutput> {
-        Some(Self::loop_output())
+        Some(Self::loop_output(None, 1))
     }
 
     fn react(&self, _state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput> {
-        if trigger.meaning().as_str() == "loop" {
-            vec![Self::loop_output()]
+        if let Some(count) = count_of(trigger) {
+            vec![Self::loop_output(
+                Some(AttributeValue::Integer(count)),
+                count + 1,
+            )]
         } else {
             Vec::new()
         }
@@ -229,25 +243,27 @@ struct CountingLoopRules {
 
 impl CountingLoopRules {
     fn counted_output(count: i64) -> ExecutionOutput {
+        Self::counted_set(None, count)
+    }
+
+    fn counted_next(previous: i64) -> ExecutionOutput {
+        Self::counted_set(Some(AttributeValue::Integer(previous)), previous + 1)
+    }
+
+    fn counted_set(old: Option<AttributeValue>, new: i64) -> ExecutionOutput {
         ExecutionOutput::new(
             Meaning::new("loop"),
             vec![Effect::SetAttribute {
                 owner: AttributeOwner::Element(element_id(DOOR)),
                 name: "count".into(),
-                old: None,
-                new: AttributeValue::Integer(count),
+                old,
+                new: AttributeValue::Integer(new),
             }],
         )
     }
 
     fn count_of(trigger: &Event) -> Option<i64> {
-        trigger.effects().iter().find_map(|effect| match effect {
-            Effect::SetAttribute {
-                new: AttributeValue::Integer(count),
-                ..
-            } => Some(*count),
-            _ => None,
-        })
+        count_of(trigger)
     }
 }
 
@@ -274,7 +290,7 @@ impl Rule for CountingLoopRules {
             && let Some(count) = Self::count_of(trigger)
             && (count as usize) < self.max
         {
-            return vec![Self::counted_output(count + 1)];
+            return vec![Self::counted_next(count)];
         }
         Vec::new()
     }
@@ -285,11 +301,13 @@ struct OrderingRules;
 
 impl OrderingRules {
     fn output(meaning: &str, count: i64) -> ExecutionOutput {
+        // each event sets its own attribute, so every "before" is None
+        // and holds however many events the chain produces
         ExecutionOutput::new(
             Meaning::new(meaning),
             vec![Effect::SetAttribute {
                 owner: AttributeOwner::Element(element_id(DOOR)),
-                name: "count".into(),
+                name: meaning.into(),
                 old: None,
                 new: AttributeValue::Integer(count),
             }],
@@ -509,4 +527,50 @@ fn an_effect_free_failure_execution_still_produces_its_event() {
     assert_eq!(events[0].meaning().as_str(), "fallito");
     assert!(events[0].effects().is_empty());
     assert!(!events[0].exposed());
+}
+
+/// Rules whose execution produces an effect whose "before" value does not
+/// match the state: the lantern is in the Cantina, not in the inventory.
+struct MismatchingRules;
+
+impl Rule for MismatchingRules {
+    fn available_commands(&self, _state: &StateView<'_>, _who: &CommandSource) -> Vec<Command> {
+        Vec::new()
+    }
+
+    fn check(&self, _state: &StateView<'_>, _command: &Command) -> Result<(), Refusal> {
+        Ok(())
+    }
+
+    fn execute(
+        &self,
+        _state: &StateView<'_>,
+        _command: &Command,
+        _dice: &[DiceOutcome],
+    ) -> Option<ExecutionOutput> {
+        Some(ExecutionOutput::new(
+            Meaning::new("preso"),
+            vec![Effect::MoveElement {
+                id: element_id(LANTERN),
+                from: Some(element_id(INVENTORY)),
+                to: Some(element_id(CANTINA)),
+            }],
+        ))
+    }
+
+    fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
+        Vec::new()
+    }
+}
+
+#[test]
+fn a_response_whose_event_does_not_apply_is_discarded_with_an_error() {
+    let state = world_with_lantern();
+    let before = state.clone();
+    let command = take_lantern();
+    let result = decide(&state, &command, &MismatchingRules);
+    let error = result.expect_err("the event does not apply");
+    assert!(matches!(error, DecideError::ApplyFailed(_)));
+    // the whole response is discarded and the caller's state is untouched
+    assert_eq!(state, before);
 }

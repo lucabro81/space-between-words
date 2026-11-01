@@ -84,7 +84,9 @@ impl Command {
     }
 
     /// The dice material the runtime supplied. The kernel expands it into
-    /// rolls and records them in the event; it is never stored in the state.
+    /// rolls and records them in the event (the deterministic expansion is
+    /// a later unit of work; until then no rolls are expanded). It is never
+    /// stored in the state.
     pub fn dice_material(&self) -> &Seed {
         &self.dice_material
     }

@@ -1,6 +1,9 @@
 //! Shared fixtures for the kernel's integration tests: ID helpers and the
 //! ordinary-case world (Ada in the Cantina with a lantern, a door and an
-//! inventory).
+//! inventory). Each test binary includes the whole module; helpers it does
+//! not use are allowed to stay.
+
+#![allow(dead_code)]
 
 use sbw_kernel::command::{Command, CommandParam, CommandSource};
 use sbw_kernel::effect::{Rate, TimeAnchor};
