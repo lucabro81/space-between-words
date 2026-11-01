@@ -1,6 +1,6 @@
 [package]
 name = "sbw-eventlog"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "sbw block 2 — Registro eventi: SQLite log, CBOR codec, hash chain, lock, indexes, snapshots"
 license = "MIT"

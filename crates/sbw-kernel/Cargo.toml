@@ -1,6 +1,6 @@
 [package]
 name = "sbw-kernel"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "sbw block 1 — Nucleo: decide, apply, state, effects, rule trait, dice, threads, time"
 license = "MIT"
