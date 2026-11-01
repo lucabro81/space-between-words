@@ -1,6 +1,9 @@
 //! Shared fixtures for the kernel's integration tests: ID helpers and the
 //! ordinary-case world (Ada in the Cantina with a lantern, a door and an
-//! inventory).
+//! inventory). Each test binary includes the whole module; helpers it does
+//! not use are allowed to stay.
+
+#![allow(dead_code)]
 
 use sbw_kernel::command::{Command, CommandParam, CommandSource};
 use sbw_kernel::effect::{Rate, TimeAnchor};
@@ -109,4 +112,10 @@ pub fn take_lantern() -> Command {
         WallTime::new(1_000),
         Seed::new(vec![9, 9, 9]),
     )
+}
+
+/// A world whose IDs match the known raw values: the Cantina (1) holds the
+/// lantern (2); Ada (7) is in the Cantina.
+pub fn event_id_free_world() -> State {
+    world_with_lantern()
 }
