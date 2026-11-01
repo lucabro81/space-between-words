@@ -528,3 +528,49 @@ fn an_effect_free_failure_execution_still_produces_its_event() {
     assert!(events[0].effects().is_empty());
     assert!(!events[0].exposed());
 }
+
+/// Rules whose execution produces an effect whose "before" value does not
+/// match the state: the lantern is in the Cantina, not in the inventory.
+struct MismatchingRules;
+
+impl Rule for MismatchingRules {
+    fn available_commands(&self, _state: &StateView<'_>, _who: &CommandSource) -> Vec<Command> {
+        Vec::new()
+    }
+
+    fn check(&self, _state: &StateView<'_>, _command: &Command) -> Result<(), Refusal> {
+        Ok(())
+    }
+
+    fn execute(
+        &self,
+        _state: &StateView<'_>,
+        _command: &Command,
+        _dice: &[DiceOutcome],
+    ) -> Option<ExecutionOutput> {
+        Some(ExecutionOutput::new(
+            Meaning::new("preso"),
+            vec![Effect::MoveElement {
+                id: element_id(LANTERN),
+                from: Some(element_id(INVENTORY)),
+                to: Some(element_id(CANTINA)),
+            }],
+        ))
+    }
+
+    fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
+        Vec::new()
+    }
+}
+
+#[test]
+fn a_response_whose_event_does_not_apply_is_discarded_with_an_error() {
+    let state = world_with_lantern();
+    let before = state.clone();
+    let command = take_lantern();
+    let result = decide(&state, &command, &MismatchingRules);
+    let error = result.expect_err("the event does not apply");
+    assert!(matches!(error, DecideError::ApplyFailed(_)));
+    // the whole response is discarded and the caller's state is untouched
+    assert_eq!(state, before);
+}

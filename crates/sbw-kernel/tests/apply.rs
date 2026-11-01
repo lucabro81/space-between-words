@@ -1,7 +1,8 @@
 //! `apply` integration tests: replay determinism, independence from the
 //! rules, the rewind case, replay without re-rolling, and before-value
-//! coherence. Events are constructed directly — `apply` is tested in
-//! isolation, never through `decide`.
+//! coherence. The tests here construct events directly — `apply` is tested
+//! in isolation; one closing test checks that `decide` + `apply` and replay
+//! agree.
 
 mod common;
 
@@ -152,28 +153,33 @@ fn rewind_moves_the_lantern_back_and_resets_the_anchor_with_swapped_values() {
 
 #[test]
 fn replay_never_re_rolls_dice() {
-    // the log carries recorded dice outcomes; replay rebuilds the same
-    // state a second replay of a log with different recorded outcomes
-    // does not agree on is up to the rules — here the outcomes simply do
-    // not reach the state, and applying the log invokes no randomness
-    let mut taken = taken_event(CANTINA, INVENTORY);
-    taken = Event::new(
-        taken.meaning().clone(),
-        taken.effects().to_vec(),
-        taken.involved().to_vec(),
-        taken.vigil(),
-        taken.threads().to_vec(),
-        taken.wall_time(),
-        vec![DiceOutcome::new("skill check, 1d20", 14)],
-    );
-    assert_eq!(taken.dice_outcomes().len(), 1);
-    let first = replay(&[taken.clone()]);
-    let second = replay(&[taken]);
+    // two logs identical except for the recorded dice outcomes replay to
+    // the same state: the outcomes are chronicle in the event, never reach
+    // the state, and applying a log invokes no randomness
+    let with_high_roll = with_dice(taken_event(CANTINA, INVENTORY), 14);
+    let with_low_roll = with_dice(taken_event(CANTINA, INVENTORY), 3);
+    assert_eq!(with_high_roll.dice_outcomes()[0].result(), 14);
+    assert_eq!(with_low_roll.dice_outcomes()[0].result(), 3);
+    let first = replay(&[with_high_roll]);
+    let second = replay(&[with_low_roll]);
     assert_eq!(first, second);
     assert_eq!(
         lantern_container(&first),
         Some(element_id(INVENTORY).to_bytes())
     );
+}
+
+/// The same event with a recorded dice outcome attached.
+fn with_dice(event: Event, result: i64) -> Event {
+    Event::new(
+        event.meaning().clone(),
+        event.effects().to_vec(),
+        event.involved().to_vec(),
+        event.vigil(),
+        event.threads().to_vec(),
+        event.wall_time(),
+        vec![DiceOutcome::new("skill check, 1d20", result)],
+    )
 }
 
 #[test]
@@ -380,8 +386,82 @@ fn every_effect_of_the_vocabulary_applies() {
     assert!(!state.elements().contains_key(&element_id(LANTERN)));
     assert!(matches!(
         apply(&state, &remove),
-        Err(ApplyError::BeforeMismatch { .. })
+        Err(ApplyError::UnknownElement { .. })
     ));
+}
+
+#[test]
+fn attributes_can_belong_to_an_incarnation() {
+    let world = world_with_lantern();
+    let event = Event::new(
+        Meaning::new("set"),
+        vec![Effect::SetAttribute {
+            owner: AttributeOwner::Incarnation(incarnation_id(ADA)),
+            name: "hunger".into(),
+            old: None,
+            new: AttributeValue::Integer(3),
+        }],
+        Vec::new(),
+        None,
+        Vec::new(),
+        WallTime::new(1_000),
+        Vec::new(),
+    );
+    let next = apply(&world, &event).expect("applies");
+    let key = AttributeKey::new(AttributeOwner::Incarnation(incarnation_id(ADA)), "hunger");
+    assert_eq!(next.attribute(&key), Some(&AttributeValue::Integer(3)));
+}
+
+#[test]
+fn effects_within_one_event_apply_in_order() {
+    let world = world_with_lantern();
+    // the second effect depends on the first one's change: both must apply
+    // in sequence within the same event
+    let event = Event::new(
+        Meaning::new("genesi"),
+        vec![
+            Effect::CreateElement {
+                id: element_id(11),
+                element_type: "coin".into(),
+                container: Some(element_id(CANTINA)),
+                attributes: Vec::new(),
+            },
+            Effect::SetAttribute {
+                owner: AttributeOwner::Element(element_id(11)),
+                name: "shiny".into(),
+                old: None,
+                new: AttributeValue::Boolean(true),
+            },
+        ],
+        Vec::new(),
+        None,
+        Vec::new(),
+        WallTime::new(1_000),
+        Vec::new(),
+    );
+    let next = apply(&world, &event).expect("applies");
+    let key = AttributeKey::new(AttributeOwner::Element(element_id(11)), "shiny");
+    assert_eq!(next.attribute(&key), Some(&AttributeValue::Boolean(true)));
+    // the same two effects in the opposite order fail: the element does
+    // not exist yet when the removal runs
+    let backwards = Event::new(
+        Meaning::new("genesi-inversa"),
+        vec![
+            Effect::RemoveElement { id: element_id(11) },
+            Effect::CreateElement {
+                id: element_id(11),
+                element_type: "coin".into(),
+                container: Some(element_id(CANTINA)),
+                attributes: Vec::new(),
+            },
+        ],
+        Vec::new(),
+        None,
+        Vec::new(),
+        WallTime::new(1_000),
+        Vec::new(),
+    );
+    assert!(apply(&world, &backwards).is_err());
 }
 
 #[test]
@@ -454,5 +534,11 @@ fn the_state_replay_rebuilds_matches_the_state_decide_plus_apply_builds() {
     for event in &events {
         applied = apply(&applied, event).expect("the response's events apply");
     }
+    // the concrete outcome: the lantern ended up in Ada's inventory
+    assert_eq!(
+        lantern_container(&applied),
+        Some(element_id(INVENTORY).to_bytes())
+    );
+    // and replay from the initial state rebuilds exactly that state
     assert_eq!(replay(&events), applied);
 }

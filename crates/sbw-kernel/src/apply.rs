@@ -1,8 +1,9 @@
 //! `apply`: the kernel's second operation. Given a state and an event, it
 //! produces the new state using only the event's effects — never the
 //! author's rules. This is what makes replaying the event log independent
-//! of rule changes: every effect carries its "before" value, and `apply`
-//! verifies each one against the current state before modifying anything.
+//! of rule changes: every effect that carries a "before" value is verified
+//! against the current state before anything is modified, and effects
+//! without one are checked for the entities they reference.
 //!
 //! Pure: no I/O, no clock, no randomness, and the rules are never invoked.
 //! The input state is never mutated: `apply` works on a clone and returns
@@ -12,6 +13,7 @@
 use crate::effect::Effect;
 use crate::error::ApplyError;
 use crate::event::Event;
+use crate::id::ElementId;
 use crate::state::{
     AttributeKey, AttributeOwner, ElementSkeleton, State, ThreadSkeleton, VigilSkeleton,
 };
@@ -25,17 +27,14 @@ use crate::state::{
 pub fn apply(state: &State, event: &Event) -> Result<State, ApplyError> {
     let mut next = state.clone();
     for (index, effect) in event.effects().iter().enumerate() {
-        apply_effect(&mut next, effect).map_err(|detail| ApplyError::BeforeMismatch {
-            effect_index: index,
-            detail,
-        })?;
+        apply_effect(&mut next, effect, index)?;
     }
     Ok(next)
 }
 
 /// Applies one effect to a working copy of the state, verifying its
-/// "before" value first. On mismatch, returns what differed.
-fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
+/// "before" value and referenced entities first.
+fn apply_effect(state: &mut State, effect: &Effect, index: usize) -> Result<(), ApplyError> {
     match effect {
         Effect::CreateElement {
             id,
@@ -44,23 +43,35 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
             attributes,
         } => {
             if state.elements().contains_key(id) {
-                return Err(format!("element {:?} already exists", id));
+                return Err(ApplyError::DuplicateElement {
+                    effect_index: index,
+                    id: *id,
+                });
             }
             if let Some(container) = container
                 && !state.elements().contains_key(container)
             {
-                return Err(format!("container {:?} does not exist", container));
+                return Err(ApplyError::UnknownContainer {
+                    effect_index: index,
+                    id: *container,
+                });
             }
             state
                 .add_element(ElementSkeleton::new(*id, element_type.clone(), *container))
-                .map_err(|_| format!("element {:?} already exists", id))?;
+                .map_err(|_| ApplyError::DuplicateElement {
+                    effect_index: index,
+                    id: *id,
+                })?;
             for (name, value) in attributes {
                 state.set_attribute(AttributeOwner::Element(*id), name.clone(), value.clone());
             }
         }
         Effect::RemoveElement { id } => {
             if !state.elements().contains_key(id) {
-                return Err(format!("element {:?} does not exist", id));
+                return Err(ApplyError::UnknownElement {
+                    effect_index: index,
+                    id: *id,
+                });
             }
             state.remove_element(*id);
         }
@@ -69,17 +80,34 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
                 .elements()
                 .get(id)
                 .map(|element| element.container())
-                .ok_or_else(|| format!("element {:?} does not exist", id))?;
+                .ok_or(ApplyError::UnknownElement {
+                    effect_index: index,
+                    id: *id,
+                })?;
             if current != *from {
-                return Err(format!(
-                    "element {:?} is in {:?}, not {:?}",
-                    id, current, from
-                ));
+                return Err(ApplyError::BeforeMismatch {
+                    effect_index: index,
+                    expected: format!("{from:?}"),
+                    actual: format!("{current:?}"),
+                });
             }
-            if let Some(to) = to
-                && !state.elements().contains_key(to)
-            {
-                return Err(format!("container {:?} does not exist", to));
+            if let Some(to) = to {
+                if !state.elements().contains_key(to) {
+                    return Err(ApplyError::UnknownContainer {
+                        effect_index: index,
+                        id: *to,
+                    });
+                }
+                // the world is a single-container tree: moving an element
+                // into itself or into one of its own descendants would
+                // create a cycle
+                if would_cycle(state, *id, *to) {
+                    return Err(ApplyError::ContainerCycle {
+                        effect_index: index,
+                        id: *id,
+                        container: *to,
+                    });
+                }
             }
             state.move_element(*id, *to);
         }
@@ -91,10 +119,11 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
         } => {
             let current = state.attribute(&AttributeKey::new(owner.clone(), name.clone()));
             if current != old.as_ref() {
-                return Err(format!(
-                    "attribute {:?} was {:?}, not {:?}",
-                    name, current, old
-                ));
+                return Err(ApplyError::BeforeMismatch {
+                    effect_index: index,
+                    expected: format!("{old:?}"),
+                    actual: format!("{current:?}"),
+                });
             }
             state.set_attribute(owner.clone(), name.clone(), new.clone());
         }
@@ -104,7 +133,10 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
             incarnations,
         } => {
             if state.open_threads().contains_key(id) {
-                return Err(format!("thread {:?} is already open", id));
+                return Err(ApplyError::ThreadAlreadyOpen {
+                    effect_index: index,
+                    id: *id,
+                });
             }
             state.open_thread(ThreadSkeleton::new(
                 *id,
@@ -114,7 +146,10 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
         }
         Effect::CloseThread { id } => {
             if !state.open_threads().contains_key(id) {
-                return Err(format!("thread {:?} is not open", id));
+                return Err(ApplyError::ThreadNotOpen {
+                    effect_index: index,
+                    id: *id,
+                });
             }
             state.close_thread(*id);
         }
@@ -127,40 +162,65 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
                 .get(&deadline.world_time())
                 .is_some_and(|list| list.contains(deadline))
             {
-                return Err(format!(
-                    "deadline {:?} is not scheduled",
-                    deadline.world_time()
-                ));
+                return Err(ApplyError::DeadlineNotScheduled {
+                    effect_index: index,
+                    world_time: deadline.world_time(),
+                });
             }
             state.cancel_deadline(deadline);
         }
         Effect::SetTimeAnchor { old, new } => {
             if state.time_anchor() != *old {
-                return Err(format!(
-                    "anchor was {:?}, not the recorded {:?}",
-                    state.time_anchor(),
-                    old
-                ));
+                return Err(ApplyError::BeforeMismatch {
+                    effect_index: index,
+                    expected: format!("{old:?}"),
+                    actual: format!("{:?}", state.time_anchor()),
+                });
             }
             state.set_time_anchor(*new);
         }
         Effect::OpenVigil { id, incarnation } => {
             if state.open_vigils().contains_key(id) {
-                return Err(format!("vigil {:?} is already open", id));
+                return Err(ApplyError::VigilAlreadyOpen {
+                    effect_index: index,
+                    id: *id,
+                });
             }
             if !state.incarnations().contains_key(incarnation) {
-                return Err(format!("incarnation {:?} does not exist", incarnation));
+                return Err(ApplyError::UnknownIncarnation {
+                    effect_index: index,
+                    id: *incarnation,
+                });
             }
             state.open_vigil(VigilSkeleton::new(*id, *incarnation));
         }
         Effect::CloseVigil { id } => {
             if !state.open_vigils().contains_key(id) {
-                return Err(format!("vigil {:?} is not open", id));
+                return Err(ApplyError::VigilNotOpen {
+                    effect_index: index,
+                    id: *id,
+                });
             }
             state.close_vigil(*id);
         }
     }
     Ok(())
+}
+
+/// Whether making `container` the container of `element` would create a
+/// cycle: walking up from `container`, do we reach `element`?
+fn would_cycle(state: &State, element: ElementId, container: ElementId) -> bool {
+    let mut cursor = Some(container);
+    while let Some(current) = cursor {
+        if current == element {
+            return true;
+        }
+        cursor = state
+            .elements()
+            .get(&current)
+            .and_then(|skeleton| skeleton.container());
+    }
+    false
 }
 
 #[cfg(test)]
@@ -257,8 +317,15 @@ mod tests {
             to: Some(element(8)),
         }]);
         let error = apply(&state, &event).expect_err("mismatched before value");
-        assert_eq!(error.effect_index(), Some(0));
-        assert!(error.to_string().contains("not"));
+        assert_eq!(error.effect_index(), 0);
+        assert!(matches!(
+            error,
+            ApplyError::BeforeMismatch {
+                effect_index: 0,
+                ..
+            }
+        ));
+        assert!(error.to_string().contains("expected"));
     }
 
     #[test]
@@ -272,7 +339,7 @@ mod tests {
         }]);
         assert!(matches!(
             apply(&state, &event),
-            Err(ApplyError::BeforeMismatch { .. })
+            Err(ApplyError::DuplicateElement { .. })
         ));
     }
 
@@ -362,6 +429,70 @@ mod tests {
         assert!(matches!(
             apply(&state, &event),
             Err(ApplyError::BeforeMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn apply_rejects_a_move_into_itself_or_a_descendant() {
+        let state = world_with_lantern();
+        // direct self-container
+        let self_move = event(vec![Effect::MoveElement {
+            id: element(1),
+            from: None,
+            to: Some(element(1)),
+        }]);
+        assert!(matches!(
+            apply(&state, &self_move),
+            Err(ApplyError::ContainerCycle { .. })
+        ));
+        // indirect: the room into the lantern it contains
+        let cycle = event(vec![Effect::MoveElement {
+            id: element(1),
+            from: None,
+            to: Some(element(2)),
+        }]);
+        assert!(matches!(
+            apply(&state, &cycle),
+            Err(ApplyError::ContainerCycle { .. })
+        ));
+        // moving to the world root is fine instead
+        let to_root = event(vec![Effect::MoveElement {
+            id: element(2),
+            from: Some(element(1)),
+            to: None,
+        }]);
+        assert!(apply(&state, &to_root).is_ok());
+    }
+
+    #[test]
+    fn apply_rejects_unknown_referenced_entities() {
+        let state = world_with_lantern();
+        let create = event(vec![Effect::CreateElement {
+            id: element(11),
+            element_type: "coin".into(),
+            container: Some(element(99)),
+            attributes: Vec::new(),
+        }]);
+        assert!(matches!(
+            apply(&state, &create),
+            Err(ApplyError::UnknownContainer { .. })
+        ));
+        let move_to = event(vec![Effect::MoveElement {
+            id: element(2),
+            from: Some(element(1)),
+            to: Some(element(99)),
+        }]);
+        assert!(matches!(
+            apply(&state, &move_to),
+            Err(ApplyError::UnknownContainer { .. })
+        ));
+        let vigil = event(vec![Effect::OpenVigil {
+            id: VigilId::from_raw(5),
+            incarnation: IncarnationId::from_raw(42),
+        }]);
+        assert!(matches!(
+            apply(&state, &vigil),
+            Err(ApplyError::UnknownIncarnation { .. })
         ));
     }
 

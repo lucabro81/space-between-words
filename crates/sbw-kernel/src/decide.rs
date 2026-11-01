@@ -32,6 +32,9 @@ pub const REACTION_DEPTH_LIMIT: usize = 100;
 ///   no events, the state is unchanged.
 /// - `Err(DecideError::DepthLimitExceeded)`: the reaction chain went deeper
 ///   than the limit; no events, the state is unchanged.
+/// - `Err(DecideError::ApplyFailed)`: an event produced during the response
+///   did not apply cleanly to the working copy; the whole response is
+///   discarded — no events, the state is unchanged.
 /// - `Ok(events)`: the response group, in evaluation order. Empty when the
 ///   accepted command produced no event — a command that changes nothing
 ///   produces no events.

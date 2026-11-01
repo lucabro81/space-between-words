@@ -257,9 +257,10 @@ impl State {
         self.attributes.get(key)
     }
 
-    /// Removes an element from the world. Coherence checks — the element
-    /// exists, its recorded attributes belong to it — are the caller's
-    /// (`apply` verifies them before calling).
+    /// Removes an element from the world. Its recorded attributes stay in
+    /// the map, still keyed to the removed element's ID — preserved so a
+    /// later recreation can pick them up. The existence check is the
+    /// caller's: `apply` verifies it before calling.
     pub fn remove_element(&mut self, id: ElementId) {
         self.elements.remove(&id);
     }
@@ -320,7 +321,9 @@ impl State {
     /// fiction time. Cancelling an unscheduled deadline is a no-op.
     pub fn cancel_deadline(&mut self, deadline: &Deadline) {
         if let Some(list) = self.deadlines.get_mut(&deadline.world_time()) {
-            list.retain(|scheduled| scheduled != deadline);
+            if let Some(position) = list.iter().position(|scheduled| scheduled == deadline) {
+                list.remove(position);
+            }
             if list.is_empty() {
                 self.deadlines.remove(&deadline.world_time());
             }
@@ -457,6 +460,22 @@ mod tests {
                 id: ElementId::from_raw(42)
             })
         );
+    }
+
+    #[test]
+    fn cancel_deadline_removes_one_of_two_identical_deadlines() {
+        use crate::effect::{Deadline, DeadlinePayload};
+        let mut state = State::new(anchor());
+        let deadline = Deadline::new(WorldTime::new(900), DeadlinePayload::new("wake", vec![]));
+        state.schedule_deadline(deadline.clone());
+        state.schedule_deadline(deadline.clone());
+        state.cancel_deadline(&deadline);
+        assert_eq!(
+            state.deadlines().get(&WorldTime::new(900)),
+            Some(&vec![deadline.clone()])
+        );
+        state.cancel_deadline(&deadline);
+        assert!(state.deadlines().get(&WorldTime::new(900)).is_none());
     }
 
     #[test]

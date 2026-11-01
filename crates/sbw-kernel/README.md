@@ -13,9 +13,11 @@ Modules:
 - `time` — wall time, log position, fiction time, dice material
 - `command` — the structured request entering the kernel: who, action,
   parameters, wall time, dice material
+- `apply` — the kernel's second operation: state + event → new state, using
+  only the event's effects (replay never runs the rules)
 - `decide` — the response cycle: state + command + rules → events, refusal
   or a reported depth-limit error; stamps every event it produces
-- `error` — the structured errors of `decide`
+- `error` — the structured errors of `decide` and `apply`
 - `meaning` — the open-vocabulary label of an event
 - `effect` — the closed vocabulary of state changes, attribute values,
   the fiction-time rate and anchor, deadlines
