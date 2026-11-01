@@ -11,10 +11,16 @@ Modules:
 - `id` — opaque ID newtypes (player, incarnation, world, element, thread,
   vigil): compare, order and serialize, nothing else
 - `time` — wall time, log position, fiction time, dice material
+- `command` — the structured request entering the kernel: who, action,
+  parameters, wall time, dice material
 - `meaning` — the open-vocabulary label of an event
 - `effect` — the closed vocabulary of state changes, attribute values,
   the fiction-time rate and anchor, deadlines
 - `event` — the fact that happened: meaning, effects, who, when
+- `refusal` — the structured rejection of a command that makes no sense in
+  the current state (code + parameters); never recorded
+- `rule` — the rule trait (the four functions the kernel calls into
+  author-declared rules), the read-only state view, the execution output
 - `state` — the world snapshot: skeleton plus attributes
 
 The kernel is pure: no file system, network, clock, environment, processes,
