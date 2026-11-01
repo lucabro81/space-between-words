@@ -80,6 +80,7 @@ Shipped documentation stands alone. The specs are design-time documents and may 
 - Crate READMEs, the root `README.md` and this file follow the same rule: they describe their subject without pointing into the specs.
 - References to external standards (RFC 8949) are fine — they are permanent.
 - Criterion IDs belong to the issues, the plans and the PRs that track the work — never to the code: not in file names, not in test names, not in comments. The full text of each criterion is quoted in the issue that covers it.
+- Commit messages and PR titles follow the same rule: no spec references, no criterion IDs. PR titles become the squash commit messages on `main`, so open PRs with descriptive titles and let `Closes #N` carry the traceability.
 - The docs-auditor review gate flags any spec reference in the documentation surface of a diff.
 
 ## What NOT to do
