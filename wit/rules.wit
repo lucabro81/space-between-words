@@ -60,10 +60,11 @@ interface rule-engine {
     /// the response may be empty.
     execute: func(input: rule-input, dice: dice-outcomes) -> option<execution-output>;
 
-    /// `reazioni` — additional events triggered by the command or by
-    /// events just produced (before / instead / after, plus thread
-    /// generators), in the same response. Rules return execution outputs;
-    /// the kernel builds the events, stamping the fields it owns (wall
-    /// time, dice outcomes, thread membership) on every one of them.
+    /// `reazioni` — additional events triggered by an event just produced,
+    /// in the same response. Reactions triggered by the command itself
+    /// (before / instead of the action) are a later unit of work. Rules
+    /// return execution outputs; the kernel builds the events, stamping the
+    /// fields it owns (wall time, dice outcomes, thread membership) on every
+    /// one of them.
     react: func(state: state-view, trigger: event) -> list<execution-output>;
 }

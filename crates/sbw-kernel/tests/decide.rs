@@ -472,3 +472,41 @@ fn an_accepted_command_with_no_effects_returns_an_empty_response() {
     let events = decide(&state, &command, &QuietTimeRules).expect("accepted");
     assert!(events.is_empty());
 }
+
+/// A failed execution: the output has a meaning but no effects, and it is
+/// still an event.
+struct FailedExecutionRules;
+
+impl Rule for FailedExecutionRules {
+    fn available_commands(&self, _state: &StateView<'_>, _who: &CommandSource) -> Vec<Command> {
+        Vec::new()
+    }
+
+    fn check(&self, _state: &StateView<'_>, _command: &Command) -> Result<(), Refusal> {
+        Ok(())
+    }
+
+    fn execute(
+        &self,
+        _state: &StateView<'_>,
+        _command: &Command,
+        _dice: &[DiceOutcome],
+    ) -> Option<ExecutionOutput> {
+        Some(ExecutionOutput::new(Meaning::new("fallito"), Vec::new()))
+    }
+
+    fn react(&self, _state: &StateView<'_>, _trigger: &Event) -> Vec<ExecutionOutput> {
+        Vec::new()
+    }
+}
+
+#[test]
+fn an_effect_free_failure_execution_still_produces_its_event() {
+    let state = world_with_lantern();
+    let command = time_command();
+    let events = decide(&state, &command, &FailedExecutionRules).expect("decided");
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].meaning().as_str(), "fallito");
+    assert!(events[0].effects().is_empty());
+    assert!(!events[0].exposed());
+}

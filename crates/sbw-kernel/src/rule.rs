@@ -86,11 +86,12 @@ pub trait Rule {
         dice: &[DiceOutcome],
     ) -> Option<ExecutionOutput>;
 
-    /// Additional events triggered by an event just produced (reactions
-    /// that run before, instead of, or after the action), in the same
-    /// response. Rules return execution outputs; the kernel builds the
-    /// events, stamping the fields it owns (wall time, dice outcomes,
-    /// thread membership) on every one of them.
+    /// Additional events triggered by an event just produced, in the same
+    /// response. Reactions triggered by the command itself (before or
+    /// instead of the action) are a later unit of work. Rules return
+    /// execution outputs; the kernel builds the events, stamping the fields
+    /// it owns (wall time, dice outcomes, thread membership) on every one of
+    /// them.
     fn react(&self, state: &StateView<'_>, trigger: &Event) -> Vec<ExecutionOutput>;
 }
 
