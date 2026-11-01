@@ -103,6 +103,9 @@ fn apply_effect(state: &mut State, effect: &Effect) -> Result<(), String> {
             elements,
             incarnations,
         } => {
+            if state.open_threads().contains_key(id) {
+                return Err(format!("thread {:?} is already open", id));
+            }
             state.open_thread(ThreadSkeleton::new(
                 *id,
                 elements.iter().copied(),
@@ -316,6 +319,31 @@ mod tests {
         assert!(apply(&state, &vigil).is_err());
         let thread = event(vec![Effect::CloseThread {
             id: ThreadId::from_raw(9),
+        }]);
+        assert!(apply(&state, &thread).is_err());
+    }
+
+    #[test]
+    fn apply_rejects_opening_an_already_open_vigil_or_thread() {
+        let mut state = world_with_lantern();
+        state.open_vigil(VigilSkeleton::new(
+            VigilId::from_raw(5),
+            IncarnationId::from_raw(7),
+        ));
+        state.open_thread(ThreadSkeleton::new(
+            ThreadId::from_raw(9),
+            [element(2)],
+            [IncarnationId::from_raw(7)],
+        ));
+        let vigil = event(vec![Effect::OpenVigil {
+            id: VigilId::from_raw(5),
+            incarnation: IncarnationId::from_raw(7),
+        }]);
+        assert!(apply(&state, &vigil).is_err());
+        let thread = event(vec![Effect::OpenThread {
+            id: ThreadId::from_raw(9),
+            elements: vec![element(2)],
+            incarnations: vec![IncarnationId::from_raw(7)],
         }]);
         assert!(apply(&state, &thread).is_err());
     }
