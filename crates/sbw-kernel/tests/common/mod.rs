@@ -113,9 +113,3 @@ pub fn take_lantern() -> Command {
         Seed::new(vec![9, 9, 9]),
     )
 }
-
-/// A world whose IDs match the known raw values: the Cantina (1) holds the
-/// lantern (2); Ada (7) is in the Cantina.
-pub fn event_id_free_world() -> State {
-    world_with_lantern()
-}

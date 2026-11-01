@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{ADA, CANTINA, INVENTORY, LANTERN, element_id, event_id_free_world, incarnation_id};
+use common::{ADA, CANTINA, INVENTORY, LANTERN, element_id, incarnation_id, world_with_lantern};
 use sbw_kernel::apply::apply;
 use sbw_kernel::command::{Command, CommandParam, CommandSource};
 use sbw_kernel::effect::{AttributeValue, Deadline, DeadlinePayload, Effect, Rate, TimeAnchor};
@@ -85,7 +85,7 @@ fn anchor_at(world_time: i64, wall_time: i64) -> TimeAnchor {
 
 /// Replays a log against the world's initial state.
 fn replay(log: &[Event]) -> State {
-    let mut state = event_id_free_world();
+    let mut state = world_with_lantern();
     for event in log {
         state = apply(&state, event).expect("the log is coherent");
     }
@@ -106,31 +106,22 @@ fn replaying_the_same_log_twice_produces_the_same_state() {
 
 #[test]
 fn replay_does_not_depend_on_the_rules() {
-    // two versions of the rules produce logs that differ in the meaning —
-    // an open-vocabulary label the author owns — and agree on the effects;
-    // replaying either log rebuilds the same state
-    let mut v1 = taken_event(CANTINA, INVENTORY);
-    let mut v2 = taken_event(CANTINA, INVENTORY);
-    v2 = Event::new(
+    // two versions of the rules name the same taking differently — the
+    // meaning is an open-vocabulary label the author owns — and agree on
+    // the effects; replaying either log rebuilds the same state, because
+    // the effects alone rebuild it
+    let taken = taken_event(CANTINA, INVENTORY);
+    let renamed = Event::new(
         Meaning::new("raccolta"),
-        v2.effects().to_vec(),
-        v2.involved().to_vec(),
-        v2.vigil(),
-        v2.threads().to_vec(),
-        v2.wall_time(),
+        taken.effects().to_vec(),
+        taken.involved().to_vec(),
+        taken.vigil(),
+        taken.threads().to_vec(),
+        taken.wall_time(),
         Vec::new(),
     );
-    v1 = Event::new(
-        Meaning::new("preso"),
-        v1.effects().to_vec(),
-        v1.involved().to_vec(),
-        v1.vigil(),
-        v1.threads().to_vec(),
-        v1.wall_time(),
-        Vec::new(),
-    );
-    assert_ne!(v1.meaning(), v2.meaning());
-    assert_eq!(replay(&[v1]), replay(&[v2]));
+    assert_ne!(taken.meaning(), renamed.meaning());
+    assert_eq!(replay(&[taken]), replay(&[renamed]));
 }
 
 #[test]
@@ -187,7 +178,7 @@ fn replay_never_re_rolls_dice() {
 
 #[test]
 fn a_mismatched_before_value_is_reported_and_changes_nothing() {
-    let world = event_id_free_world();
+    let world = world_with_lantern();
     let original = world.clone();
     // the lantern is in the Cantina, not in the inventory: the "before"
     // value of this event does not match the state
@@ -206,7 +197,7 @@ fn a_mismatched_before_value_is_reported_and_changes_nothing() {
 
 #[test]
 fn a_mismatch_deeper_in_the_event_reports_its_effect_index() {
-    let world = event_id_free_world();
+    let world = world_with_lantern();
     let original = world.clone();
     // the first effect applies cleanly, the second one's "before" anchor
     // does not match: the error names the second effect and the state the
@@ -225,7 +216,7 @@ fn a_mismatch_deeper_in_the_event_reports_its_effect_index() {
 
 #[test]
 fn every_effect_of_the_vocabulary_applies() {
-    let world = event_id_free_world();
+    let world = world_with_lantern();
     let mut state = world.clone();
 
     // create with initial attributes
@@ -395,7 +386,7 @@ fn every_effect_of_the_vocabulary_applies() {
 
 #[test]
 fn an_event_without_effects_changes_nothing() {
-    let world = event_id_free_world();
+    let world = world_with_lantern();
     let event = Event::new(
         Meaning::new("fallito"),
         Vec::new(),
@@ -450,7 +441,7 @@ impl Rule for TakeRules {
 
 #[test]
 fn the_state_replay_rebuilds_matches_the_state_decide_plus_apply_builds() {
-    let world = event_id_free_world();
+    let world = world_with_lantern();
     let command = Command::new(
         CommandSource::Incarnation(incarnation_id(ADA)),
         "take",
