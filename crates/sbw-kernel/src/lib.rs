@@ -5,7 +5,9 @@
 //! no hash-based collections (ordered structures only).
 
 pub mod command;
+pub mod decide;
 pub mod effect;
+pub mod error;
 pub mod event;
 pub mod id;
 pub mod meaning;
